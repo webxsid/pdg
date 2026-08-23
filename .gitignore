@@ -1,4 +1,19 @@
-bin/
+# Go
+/bin/
+*.test
+coverage.out
+
+# Node
 web/node_modules/
-.tmp/
-web/dist
+web/dist/
+
+# Environment
+.env
+.env.*
+
+# macOS
+.DS_Store
+
+# Editors
+.idea/
+.vscode/
