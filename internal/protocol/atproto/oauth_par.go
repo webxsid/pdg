@@ -25,6 +25,11 @@ type parResponse struct {
 	DPoPNonce  string `json:"dpop_nonce"`
 }
 
+type parWireResponse struct {
+	RequestURI string `json:"request_uri"`
+	ExpiresIn  int    `json:"expires_in"`
+}
+
 func (c *oauthClient) pushAuthorizationRequest(
 	ctx context.Context,
 	server AuthorizationServer,
@@ -102,8 +107,7 @@ func (c *oauthClient) pushAuthorizationRequest(
 		)
 	}
 
-	var result parResponse
-	result.DPoPNonce = nonce
+	var result parWireResponse
 
 	if err := json.NewDecoder(
 		io.LimitReader(resp.Body, 1<<20),
@@ -120,5 +124,15 @@ func (c *oauthClient) pushAuthorizationRequest(
 		)
 	}
 
-	return result, nil
+	if result.ExpiresIn <= 0 {
+		return parResponse{}, fmt.Errorf(
+			"PAR response missing expires_in",
+		)
+	}
+
+	return parResponse{
+		RequestURI: result.RequestURI,
+		ExpiresIn:  result.ExpiresIn,
+		DPoPNonce:  nonce,
+	}, nil
 }
