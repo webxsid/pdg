@@ -6,19 +6,33 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/webxsid/pdg/internal/config"
 	"github.com/webxsid/pdg/internal/scan"
 )
 
 var scnCmd = &cobra.Command{
-	Use:   "scan <directory>",
+	Use:   "scan [directory]",
 	Short: "Scan an existing website directory for publishable content",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runScan(cmd.Context(), args[0])
+		var dir string
+		if len(args) == 1 {
+			dir = args[0]
+		}
+
+		return runScan(cmd.Context(), dir)
 	},
 }
 
 func runScan(ctx context.Context, dir string) error {
+	if dir == "" {
+		cfg, err := config.LoadConfig(config.DefaultFilename)
+		if err != nil {
+			return fmt.Errorf("failed to load config: %w", err)
+		}
+		dir = cfg.Site.OutputDir
+	}
+
 	info, err := os.Stat(dir)
 	if err != nil {
 		return fmt.Errorf("failed to stat directory: %w", err)

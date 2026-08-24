@@ -3,6 +3,7 @@ module github.com/webxsid/pdg
 go 1.26.1
 
 require (
+	github.com/BurntSushi/toml v1.6.0
 	github.com/spf13/cobra v1.10.2
 	golang.org/x/net v0.58.0
 )

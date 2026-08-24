@@ -5,6 +5,8 @@ import (
 	"io/fs"
 	"path"
 	"strings"
+
+	"github.com/webxsid/pdg/internal/shared"
 )
 
 type Scanner struct{}
@@ -54,7 +56,7 @@ func (s *Scanner) Scan(
 				result.Skipped = append(result.Skipped, SkippedFile{Path: path, Reason: "failed to open file: " + err.Error()})
 				return nil
 			}
-			defer safeCloseFile(file)
+			defer shared.SafeCloseFsFile(file)
 
 			doc, err := ParseHTML(file)
 			if err != nil {
@@ -72,12 +74,6 @@ func (s *Scanner) Scan(
 	}
 
 	return result, nil
-}
-
-func safeCloseFile(file fs.File) {
-	if file != nil {
-		_ = file.Close()
-	}
 }
 
 func isHTML(filePath string) bool {
