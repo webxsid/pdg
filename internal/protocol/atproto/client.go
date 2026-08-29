@@ -50,8 +50,9 @@ type Session struct {
 	Scope        string
 	DPoPNonce    string
 
-	dpopKey *dpopKey
-	server  AuthorizationServer
+	dpopKey  *dpopKey
+	server   AuthorizationServer
+	clientID string
 }
 
 // Login resolves a handle, completes OAuth authorization, and returns an
@@ -77,5 +78,6 @@ func (c *Client) Login(ctx context.Context, handle string, openURL authorization
 		RefreshToken: token.RefreshToken, TokenType: token.TokenType,
 		Scope: token.Scope, DPoPNonce: token.DPoPNonce,
 		dpopKey: authorization.DPoPKey, server: authorization.Server,
+		clientID: authorization.ClientID,
 	}, nil
 }

@@ -127,3 +127,15 @@ The first goal is much smaller:
 License
 
 PDG is licensed under the MIT License. See [LICENSE](LICENSE)
+
+## Authentication Storage
+
+PDG stores OAuth credentials in the operating system's secure credential
+store: macOS Keychain, Windows Credential Manager, or Linux Secret Service.
+PDG does not fall back to plaintext credential files, encrypted files, or
+environment variables when a native store is unavailable. Linux headless
+environments need an active Secret Service/D-Bus provider.
+
+Non-secret account metadata is stored separately under the platform user
+configuration directory in `pdg/auth/accounts.json`; it contains no access
+tokens, refresh tokens, authorization codes, or DPoP private keys.

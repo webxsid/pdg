@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/webxsid/pdg/internal/protocol"
+	"github.com/webxsid/pdg/internal/sessionstore"
 )
 
 var loginCmd = &cobra.Command{
@@ -38,8 +39,15 @@ func runLogin(ctx context.Context, handle string) error {
 	if err != nil {
 		return err
 	}
+	store, err := sessionstore.DefaultAuthStore()
+	if err != nil {
+		return fmt.Errorf("prepare session store: %w", err)
+	}
+	if err := store.SaveSession(ctx, session); err != nil {
+		return fmt.Errorf("save ATProto session: %w", err)
+	}
 
 	fmt.Printf("Authenticated as %s (%s)\n", session.Identity.Handle, session.Identity.DID)
-	fmt.Println("Session authentication completed in memory; credentials were not persisted.")
+	fmt.Println("Session saved.")
 	return nil
 }
