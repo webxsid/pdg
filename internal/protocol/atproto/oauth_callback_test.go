@@ -169,6 +169,40 @@ func TestCallbackServerRejectsInvalidCallback(t *testing.T) {
 	}
 }
 
+func TestCallbackServerReportsOAuthError(t *testing.T) {
+	server, err := newCallbackServer()
+	if err != nil {
+		t.Fatalf("newCallbackServer() unexpected error = %v", err)
+	}
+	server.start()
+
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		_ = server.close(ctx)
+	})
+
+	resp, err := http.Get(server.redirectURI() + "?error=access_denied&error_description=user+denied+authorization")
+	if err != nil {
+		t.Fatalf("GET callback: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", resp.StatusCode, http.StatusBadRequest)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	_, err = server.wait(ctx)
+	if err == nil {
+		t.Fatal("wait() error = nil, want authorization error")
+	}
+	if err.Error() != "authorization failed: access_denied: user denied authorization" {
+		t.Errorf("wait() error = %q, want OAuth error", err)
+	}
+}
+
 func TestCallbackServerSuccessResponse(t *testing.T) {
 	server, err := newCallbackServer()
 	if err != nil {

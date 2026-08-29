@@ -10,8 +10,10 @@ import (
 )
 
 type oauthCallback struct {
-	Code  string `json:"code"`
-	State string `json:"state"`
+	Code             string `json:"code"`
+	State            string `json:"state"`
+	Error            string `json:"error"`
+	ErrorDescription string `json:"error_description"`
 }
 
 type callbackServer struct {
@@ -76,6 +78,23 @@ func (c *callbackServer) handleCallback(
 ) {
 	code := r.URL.Query().Get("code")
 	state := r.URL.Query().Get("state")
+	oauthError := r.URL.Query().Get("error")
+	errorDescription := r.URL.Query().Get("error_description")
+
+	if oauthError != "" {
+		http.Error(
+			w,
+			"Authorization failed: "+oauthError,
+			http.StatusBadRequest,
+		)
+
+		message := "authorization failed: " + oauthError
+		if errorDescription != "" {
+			message += ": " + errorDescription
+		}
+		c.sendResult(callbackResult{err: fmt.Errorf("%s", message)})
+		return
+	}
 
 	if code == "" {
 		http.Error(
@@ -116,8 +135,10 @@ func (c *callbackServer) handleCallback(
 
 	c.sendResult(callbackResult{
 		callback: oauthCallback{
-			Code:  code,
-			State: state,
+			Code:             code,
+			State:            state,
+			Error:            oauthError,
+			ErrorDescription: errorDescription,
 		},
 	})
 }

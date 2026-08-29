@@ -16,6 +16,7 @@ func init() {
 	rootCmd.AddCommand(scnCmd)
 	rootCmd.AddCommand(initCmd)
 	rootCmd.AddCommand(identityCmd)
+	rootCmd.AddCommand(loginCmd)
 }
 
 func Execute() {

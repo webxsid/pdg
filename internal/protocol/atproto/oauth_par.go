@@ -36,6 +36,19 @@ func (c *oauthClient) pushAuthorizationRequest(
 	request parRequest,
 	key *dpopKey,
 ) (parResponse, error) {
+	return c.pushAuthorizationRequestWithNonce(
+		ctx, server, request, key, "", true,
+	)
+}
+
+func (c *oauthClient) pushAuthorizationRequestWithNonce(
+	ctx context.Context,
+	server AuthorizationServer,
+	request parRequest,
+	key *dpopKey,
+	nonce string,
+	allowRetry bool,
+) (parResponse, error) {
 	values := url.Values{
 		"client_id":             {request.ClientID},
 		"response_type":         {"code"},
@@ -53,7 +66,7 @@ func (c *oauthClient) pushAuthorizationRequest(
 	proof, err := key.proof(
 		http.MethodPost,
 		server.PushedAuthorizationRequestEndpoint,
-		"",
+		nonce,
 	)
 	if err != nil {
 		return parResponse{}, fmt.Errorf(
@@ -89,9 +102,24 @@ func (c *oauthClient) pushAuthorizationRequest(
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		body, _ := io.ReadAll(
+		body, readErr := io.ReadAll(
 			io.LimitReader(resp.Body, 4096),
 		)
+		if readErr != nil {
+			return parResponse{}, fmt.Errorf(
+				"read PAR error response: %w", readErr,
+			)
+		}
+
+		var oauthErr oauthErrorResponse
+		_ = json.Unmarshal(body, &oauthErr)
+		responseNonce := resp.Header.Get("DPoP-Nonce")
+		if oauthErr.Error == "use_dpop_nonce" &&
+			responseNonce != "" && allowRetry {
+			return c.pushAuthorizationRequestWithNonce(
+				ctx, server, request, key, responseNonce, false,
+			)
+		}
 
 		return parResponse{}, fmt.Errorf(
 			"PAR request failed: %s: %s",
@@ -100,8 +128,8 @@ func (c *oauthClient) pushAuthorizationRequest(
 		)
 	}
 
-	nonce := resp.Header.Get("DPoP-Nonce")
-	if nonce == "" {
+	responseNonce := resp.Header.Get("DPoP-Nonce")
+	if responseNonce == "" {
 		return parResponse{}, fmt.Errorf(
 			"PAR response missing DPoP-Nonce header",
 		)
@@ -133,6 +161,6 @@ func (c *oauthClient) pushAuthorizationRequest(
 	return parResponse{
 		RequestURI: result.RequestURI,
 		ExpiresIn:  result.ExpiresIn,
-		DPoPNonce:  nonce,
+		DPoPNonce:  responseNonce,
 	}, nil
 }

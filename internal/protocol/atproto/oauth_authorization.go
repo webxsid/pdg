@@ -24,6 +24,7 @@ type authorizationResult struct {
 	DPoPNonce    string
 	DPoPKey      *dpopKey
 	Subject      string
+	Server       AuthorizationServer
 }
 
 type authorizationURLOpener func(string) error
@@ -32,6 +33,20 @@ func buildAuthorizationURL(
 	server AuthorizationServer,
 	clientID string,
 	requestURI string,
+) (string, error) {
+	return buildAuthorizationURLWithParameters(
+		server,
+		clientID,
+		requestURI,
+		url.Values{},
+	)
+}
+
+func buildAuthorizationURLWithParameters(
+	server AuthorizationServer,
+	clientID string,
+	requestURI string,
+	parameters url.Values,
 ) (string, error) {
 	if server.AuthorizationEndpoint == "" {
 		return "", fmt.Errorf(
@@ -65,6 +80,11 @@ func buildAuthorizationURL(
 	query.Set("client_id", clientID)
 	query.Set("response_type", "code")
 	query.Set("request_uri", requestURI)
+	for key, values := range parameters {
+		for _, value := range values {
+			query.Add(key, value)
+		}
+	}
 
 	parsed.RawQuery = query.Encode()
 
@@ -193,10 +213,17 @@ func (c *oauthClient) authorize(
 		)
 	}
 
-	authorizationURL, err := buildAuthorizationURL(
+	authorizationURL, err := buildAuthorizationURLWithParameters(
 		server,
 		clientID,
 		par.RequestURI,
+		url.Values{
+			"code_challenge":        {state.CodeChallenge},
+			"code_challenge_method": {"S256"},
+			"redirect_uri":          {redirectURI},
+			"scope":                 {scope},
+			"state":                 {state.State},
+		},
 	)
 	if err != nil {
 		return authorizationResult{}, fmt.Errorf(
@@ -236,6 +263,7 @@ func (c *oauthClient) authorize(
 		DPoPNonce:    par.DPoPNonce,
 		DPoPKey:      key,
 		Subject:      identity.DID,
+		Server:       server,
 	}, nil
 }
 

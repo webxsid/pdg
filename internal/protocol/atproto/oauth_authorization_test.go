@@ -321,6 +321,22 @@ func TestAuthorize(t *testing.T) {
 	if result.DPoPKey == nil {
 		t.Error("result.DPoPKey is nil")
 	}
+
+	if result.Server.Issuer != issuer {
+		t.Errorf(
+			"result.Server.Issuer = %q, want %q",
+			result.Server.Issuer,
+			issuer,
+		)
+	}
+
+	if result.Subject != did {
+		t.Errorf(
+			"result.Subject = %q, want %q",
+			result.Subject,
+			did,
+		)
+	}
 }
 
 func testJSONResponse(
