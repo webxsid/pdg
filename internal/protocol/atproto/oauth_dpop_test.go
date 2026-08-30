@@ -165,6 +165,29 @@ func TestDPoPProof(t *testing.T) {
 	}
 }
 
+func TestResourceDPoPProofIncludesAccessTokenHash(t *testing.T) {
+	key, err := newDPoPKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	const accessToken = "access-token"
+	proof, err := key.resourceProof("GET", "https://pds.example.com/xrpc/com.atproto.server.getSession", "nonce", accessToken)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parts := strings.Split(proof, ".")
+	var claims dpopProofClaims
+	decodeJWTPart(t, parts[1], &claims)
+	digest := sha256.Sum256([]byte(accessToken))
+	want := base64.RawURLEncoding.EncodeToString(digest[:])
+	if claims.Ath != want {
+		t.Errorf("ath = %q, want %q", claims.Ath, want)
+	}
+	if claims.Nonce != "nonce" {
+		t.Errorf("nonce = %q, want nonce", claims.Nonce)
+	}
+}
+
 func TestDPoPProofSignature(t *testing.T) {
 	key, err := newDPoPKey()
 	if err != nil {

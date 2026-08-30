@@ -22,6 +22,7 @@ type dpopProofClaims struct {
 	HTU   string `json:"htu"`
 	IAT   int64  `json:"iat"`
 	Nonce string `json:"nonce,omitempty"`
+	Ath   string `json:"ath,omitempty"`
 }
 
 func (k *dpopKey) proof(
@@ -60,6 +61,22 @@ func (k *dpopKey) proof(
 	}
 
 	return k.signProof(header, claims)
+}
+
+func (k *dpopKey) resourceProof(method, targetURL, nonce, accessToken string) (string, error) {
+	jti, err := randomBase64URL(32)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate jti: %w", err)
+	}
+	jwk, err := k.publicJWK()
+	if err != nil {
+		return "", fmt.Errorf("failed to get public JWK: %w", err)
+	}
+	digest := sha256.Sum256([]byte(accessToken))
+	return k.signProof(dpopProofHeader{Typ: "dpop+jwt", Alg: "ES256", JWK: jwk}, dpopProofClaims{
+		JTI: jti, HTM: method, HTU: targetURL, IAT: nowUnix(), Nonce: nonce,
+		Ath: base64.RawURLEncoding.EncodeToString(digest[:]),
+	})
 }
 
 func nowUnix() int64 {
