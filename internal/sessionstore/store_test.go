@@ -49,10 +49,10 @@ func TestAuthStoreMultipleAccountsAndMetadataSecurity(t *testing.T) {
 	ctx := context.Background()
 	a := testSession(t, "did:plc:aaa", "aaa.example.com")
 	b := testSession(t, "did:plc:bbb", "bbb.example.com")
-	if err := store.SaveSession(ctx, a); err != nil {
+	if err := store.SaveSession(ctx, a, true); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.SaveSession(ctx, b); err != nil {
+	if err := store.SaveSession(ctx, b, true); err != nil {
 		t.Fatal(err)
 	}
 	data, err := os.ReadFile(filepath.Join(root, "auth", "accounts.json"))
@@ -106,8 +106,39 @@ func TestAuthStoreMissingMetadataAndCredentialFailure(t *testing.T) {
 		t.Error("LoadActiveSession(missing) error = nil, want error")
 	}
 	fake.failSave = true
-	if err := store.SaveSession(context.Background(), testSession(t, "did:plc:aaa", "aaa.example.com")); err == nil {
+	if err := store.SaveSession(context.Background(), testSession(t, "did:plc:aaa", "aaa.example.com"), true); err == nil {
 		t.Error("SaveSession(failing credentials) error = nil, want error")
+	}
+}
+
+func TestAuthStoreSaveSessionWithoutActivationPreservesActiveAccount(t *testing.T) {
+	fake := &fakeCredentials{}
+	store := NewAuthStore(t.TempDir(), fake)
+	ctx := context.Background()
+	active := testSession(t, "did:plc:active", "active.example.com")
+	other := testSession(t, "did:plc:other", "other.example.com")
+
+	if err := store.SaveSession(ctx, active, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SaveSession(ctx, other, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SetActive(ctx, active.Identity.DID); err != nil {
+		t.Fatal(err)
+	}
+
+	updated := testSession(t, other.Identity.DID, other.Identity.Handle)
+	if err := store.SaveSession(ctx, updated, false); err != nil {
+		t.Fatal(err)
+	}
+
+	activeDID, err := store.ActiveDID(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if activeDID != active.Identity.DID {
+		t.Fatalf("active DID after non-activating save = %q, want %q", activeDID, active.Identity.DID)
 	}
 }
 

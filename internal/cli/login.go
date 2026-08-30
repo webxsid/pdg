@@ -7,17 +7,27 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/spf13/cobra"
 	"github.com/webxsid/pdg/internal/protocol"
 	"github.com/webxsid/pdg/internal/sessionstore"
 )
 
 var loginCmd = &cobra.Command{
-	Use:   "login <handle>",
+	Use:   "login [handle]",
 	Short: "Authenticate an ATProto identity",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runLogin(cmd.Context(), args[0])
+		handle := ""
+		if len(args) == 1 {
+			handle = args[0]
+		} else if err := survey.AskOne(&survey.Input{Message: "ATProto handle:"}, &handle, survey.WithStdio(os.Stdin, os.Stdout, os.Stderr)); err != nil {
+			return fmt.Errorf("read ATProto handle: %w", err)
+		}
+		if handle == "" {
+			return fmt.Errorf("ATProto handle cannot be empty")
+		}
+		return runLogin(cmd.Context(), handle)
 	},
 }
 
@@ -43,7 +53,7 @@ func runLogin(ctx context.Context, handle string) error {
 	if err != nil {
 		return fmt.Errorf("prepare session store: %w", err)
 	}
-	if err := store.SaveSession(ctx, session); err != nil {
+	if err := store.SaveSession(ctx, session, true); err != nil {
 		return fmt.Errorf("save ATProto session: %w", err)
 	}
 

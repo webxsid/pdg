@@ -15,10 +15,7 @@ var rootCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(scnCmd)
 	rootCmd.AddCommand(initCmd)
-	rootCmd.AddCommand(identityCmd)
-	rootCmd.AddCommand(loginCmd)
-	rootCmd.AddCommand(authCmd)
-	rootCmd.AddCommand(logoutCmd)
+	rootCmd.AddCommand(atprotoCmd)
 }
 
 func Execute() {

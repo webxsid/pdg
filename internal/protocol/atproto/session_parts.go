@@ -5,13 +5,15 @@ import (
 	"crypto/elliptic"
 	"crypto/x509"
 	"fmt"
+	"time"
 )
 
 // SessionMetadata contains non-secret data needed to restore a session.
 type SessionMetadata struct {
-	Identity Identity
-	Server   AuthorizationServer
-	ClientID string
+	Identity             Identity
+	Server               AuthorizationServer
+	ClientID             string
+	AccessTokenExpiresAt *time.Time
 }
 
 // Credentials contains secret OAuth material kept by a secure credential store.
@@ -26,7 +28,7 @@ type Credentials struct {
 
 // Metadata returns the non-secret restoration data for the session.
 func (s Session) Metadata() SessionMetadata {
-	return SessionMetadata{Identity: s.Identity, Server: s.server, ClientID: s.clientID}
+	return SessionMetadata{Identity: s.Identity, Server: s.server, ClientID: s.clientID, AccessTokenExpiresAt: s.AccessTokenExpiresAt}
 }
 
 // Credentials returns the secret restoration data for the session.
@@ -68,7 +70,7 @@ func NewSession(metadata SessionMetadata, credentials Credentials) (Session, err
 	if err != nil {
 		return Session{}, fmt.Errorf("parse DPoP private key: %w", err)
 	}
-	return Session{Identity: metadata.Identity, AccessToken: credentials.AccessToken, RefreshToken: credentials.RefreshToken, TokenType: credentials.TokenType, Scope: credentials.Scope, DPoPNonce: credentials.DPoPNonce, dpopKey: key, server: metadata.Server, clientID: metadata.ClientID}, nil
+	return Session{Identity: metadata.Identity, AccessToken: credentials.AccessToken, RefreshToken: credentials.RefreshToken, TokenType: credentials.TokenType, Scope: credentials.Scope, DPoPNonce: credentials.DPoPNonce, AccessTokenExpiresAt: metadata.AccessTokenExpiresAt, dpopKey: key, server: metadata.Server, clientID: metadata.ClientID}, nil
 }
 
 func (k *dpopKey) marshalPrivateKey() ([]byte, error) {

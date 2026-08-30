@@ -139,3 +139,9 @@ environments need an active Secret Service/D-Bus provider.
 Non-secret account metadata is stored separately under the platform user
 configuration directory in `pdg/auth/accounts.json`; it contains no access
 tokens, refresh tokens, authorization codes, or DPoP private keys.
+
+To manually rotate the active ATProto session's access and refresh tokens, run
+`pdg atproto auth refresh`. The existing DPoP key is reused, and rotated
+credentials are written back to the native credential store. `pdg atproto auth
+status` never refreshes automatically; when a known access-token expiry has
+passed, it recommends the refresh command.

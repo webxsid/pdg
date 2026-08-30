@@ -2,34 +2,32 @@ package cli
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/webxsid/pdg/internal/sessionstore"
 )
 
 var logoutCmd = &cobra.Command{
-	Use:   "logout",
+	Use:   "logout [handle-or-did]",
 	Short: "Delete the active ATProto session",
-	Args:  cobra.NoArgs,
-	RunE: func(cmd *cobra.Command, _ []string) error {
-		return runLogout(cmd.Context())
+	Args:  cobra.MaximumNArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runLogout(cmd.Context(), args)
 	},
 }
 
-func runLogout(ctx context.Context) error {
+func runLogout(ctx context.Context, args []string) error {
 	store, err := loadSessionStore()
 	if err != nil {
 		return err
 	}
-	session, err := store.LoadActiveSession(ctx)
+	identifier, err := selectAccountIdentifier(ctx, store, args, "Select an ATProto account to log out:")
 	if err != nil {
-		if errors.Is(err, sessionstore.ErrNoActiveAccount) || errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("no active account to log out")
-		}
-		return fmt.Errorf("load active session: %w", err)
+		return err
+	}
+	session, err := store.LoadSession(ctx, identifier)
+	if err != nil {
+		return fmt.Errorf("load account %q: %w", identifier, err)
 	}
 	if err := store.DeleteSession(ctx, session.Identity.DID); err != nil {
 		return fmt.Errorf("delete active session: %w", err)

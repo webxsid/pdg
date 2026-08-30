@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 )
 
 type Client struct {
@@ -43,12 +44,13 @@ func (c *Client) DiscoverAuthorizationServer(
 // Session contains the in-memory credentials and protocol metadata from an
 // authenticated ATProto login.
 type Session struct {
-	Identity     Identity
-	AccessToken  string
-	RefreshToken string
-	TokenType    string
-	Scope        string
-	DPoPNonce    string
+	Identity             Identity
+	AccessToken          string
+	RefreshToken         string
+	TokenType            string
+	Scope                string
+	DPoPNonce            string
+	AccessTokenExpiresAt *time.Time
 
 	dpopKey  *dpopKey
 	server   AuthorizationServer
@@ -77,7 +79,26 @@ func (c *Client) Login(ctx context.Context, handle string, openURL authorization
 		Identity: identity, AccessToken: token.AccessToken,
 		RefreshToken: token.RefreshToken, TokenType: token.TokenType,
 		Scope: token.Scope, DPoPNonce: token.DPoPNonce,
-		dpopKey: authorization.DPoPKey, server: authorization.Server,
+		AccessTokenExpiresAt: token.AccessTokenExpiresAt,
+		dpopKey:              authorization.DPoPKey, server: authorization.Server,
 		clientID: authorization.ClientID,
 	}, nil
+}
+
+// RefreshSession exchanges the session refresh token for a new token set.
+func (c *Client) RefreshSession(ctx context.Context, session Session) (Session, error) {
+	token, err := c.oauth.refreshAccessToken(ctx, session.server, session)
+	if err != nil {
+		return Session{}, fmt.Errorf("refresh ATProto session: %w", err)
+	}
+	credentials, err := session.Credentials()
+	if err != nil {
+		return Session{}, fmt.Errorf("prepare refreshed credentials: %w", err)
+	}
+	credentials.AccessToken = token.AccessToken
+	credentials.RefreshToken = token.RefreshToken
+	credentials.TokenType = token.TokenType
+	credentials.Scope = token.Scope
+	credentials.DPoPNonce = token.DPoPNonce
+	return NewSession(SessionMetadata{Identity: session.Identity, Server: session.server, ClientID: session.clientID, AccessTokenExpiresAt: token.AccessTokenExpiresAt}, credentials)
 }

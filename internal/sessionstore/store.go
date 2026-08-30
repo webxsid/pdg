@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"time"
 
 	"github.com/webxsid/pdg/internal/protocol/atproto"
 	"github.com/zalando/go-keyring"
@@ -31,14 +32,16 @@ type CredentialStore interface {
 }
 
 // NativeCredentialStore uses the OS keychain, Credential Manager, or Secret Service.
-type NativeCredentialStore struct{}
-type credentialEnvelope struct {
-	Version        int    `json:"version"`
-	AccessToken    string `json:"access_token"`
-	RefreshToken   string `json:"refresh_token"`
-	TokenType      string `json:"token_type"`
-	DPoPPrivateKey string `json:"dpop_private_key"`
-}
+type (
+	NativeCredentialStore struct{}
+	credentialEnvelope    struct {
+		Version        int    `json:"version"`
+		AccessToken    string `json:"access_token"`
+		RefreshToken   string `json:"refresh_token"`
+		TokenType      string `json:"token_type"`
+		DPoPPrivateKey string `json:"dpop_private_key"`
+	}
+)
 
 func (NativeCredentialStore) Save(ctx context.Context, did string, c atproto.Credentials) error {
 	if err := ctx.Err(); err != nil {
@@ -53,6 +56,7 @@ func (NativeCredentialStore) Save(ctx context.Context, did string, c atproto.Cre
 	}
 	return nil
 }
+
 func (NativeCredentialStore) Load(ctx context.Context, did string) (atproto.Credentials, error) {
 	if err := ctx.Err(); err != nil {
 		return atproto.Credentials{}, err
@@ -77,6 +81,7 @@ func (NativeCredentialStore) Load(ctx context.Context, did string) (atproto.Cred
 	}
 	return atproto.Credentials{AccessToken: e.AccessToken, RefreshToken: e.RefreshToken, TokenType: e.TokenType, DPoPPrivateKey: key}, nil
 }
+
 func (NativeCredentialStore) Delete(ctx context.Context, did string) error {
 	if err := ctx.Err(); err != nil {
 		return err
@@ -95,12 +100,13 @@ type AccountSummary struct {
 	Active bool
 }
 type accountMetadata struct {
-	Identity  atproto.Identity            `json:"identity"`
-	Server    atproto.AuthorizationServer `json:"authorization_server"`
-	ClientID  string                      `json:"client_id"`
-	TokenType string                      `json:"token_type"`
-	Scope     string                      `json:"scope"`
-	DPoPNonce string                      `json:"dpop_nonce"`
+	Identity             atproto.Identity            `json:"identity"`
+	Server               atproto.AuthorizationServer `json:"authorization_server"`
+	ClientID             string                      `json:"client_id"`
+	TokenType            string                      `json:"token_type"`
+	Scope                string                      `json:"scope"`
+	DPoPNonce            string                      `json:"dpop_nonce"`
+	AccessTokenExpiresAt *time.Time                  `json:"access_token_expires_at,omitempty"`
 }
 type metadataIndex struct {
 	Version   int                        `json:"version"`
@@ -117,6 +123,7 @@ type AuthStore struct {
 func NewAuthStore(root string, credentials CredentialStore) *AuthStore {
 	return &AuthStore{filepath.Join(root, "auth", "accounts.json"), credentials}
 }
+
 func DefaultAuthStore() (*AuthStore, error) {
 	root, err := os.UserConfigDir()
 	if err != nil {
@@ -125,7 +132,11 @@ func DefaultAuthStore() (*AuthStore, error) {
 	return NewAuthStore(filepath.Join(root, "pdg"), NativeCredentialStore{}), nil
 }
 
-func (s *AuthStore) SaveSession(ctx context.Context, session atproto.Session) error {
+func (s *AuthStore) SaveSession(
+	ctx context.Context,
+	session atproto.Session,
+	makeActive bool,
+) error {
 	metadata := session.Metadata()
 	credentials, err := session.Credentials()
 	if err != nil {
@@ -145,13 +156,31 @@ func (s *AuthStore) SaveSession(ctx context.Context, session atproto.Session) er
 		index = metadataIndex{Version: 1, Accounts: map[string]accountMetadata{}}
 	}
 	index.Version = 1
-	index.Accounts[metadata.Identity.DID] = accountMetadata{metadata.Identity, metadata.Server, metadata.ClientID, session.TokenType, session.Scope, session.DPoPNonce}
-	index.ActiveDID = metadata.Identity.DID
+	index.Accounts[metadata.Identity.DID] = accountMetadata{metadata.Identity, metadata.Server, metadata.ClientID, session.TokenType, session.Scope, session.DPoPNonce, session.AccessTokenExpiresAt}
+	if makeActive {
+		index.ActiveDID = metadata.Identity.DID
+	}
 	if err := s.write(index); err != nil {
 		s.restorePrevious(ctx, metadata.Identity.DID, previous, hadPrevious)
 		return fmt.Errorf("save account metadata: %w", err)
 	}
 	return nil
+}
+
+// RefreshSession refreshes and persists the selected session atomically at the application level.
+func (s *AuthStore) RefreshSession(ctx context.Context, client *atproto.Client, did string) (atproto.Session, error) {
+	session, err := s.LoadSession(ctx, did)
+	if err != nil {
+		return atproto.Session{}, fmt.Errorf("load session: %w", err)
+	}
+	updated, err := client.RefreshSession(ctx, session)
+	if err != nil {
+		return atproto.Session{}, err
+	}
+	if err := s.SaveSession(ctx, updated, false); err != nil {
+		return atproto.Session{}, fmt.Errorf("persist refreshed session: %w", err)
+	}
+	return updated, nil
 }
 
 func (s *AuthStore) restorePrevious(ctx context.Context, did string, credentials atproto.Credentials, existed bool) {
@@ -161,6 +190,7 @@ func (s *AuthStore) restorePrevious(ctx context.Context, did string, credentials
 	}
 	_ = s.credentials.Delete(ctx, did)
 }
+
 func (s *AuthStore) LoadSession(ctx context.Context, did string) (atproto.Session, error) {
 	index, err := s.read()
 	if err != nil {
@@ -177,12 +207,18 @@ func (s *AuthStore) LoadSession(ctx context.Context, did string) (atproto.Sessio
 	credentials.Scope = metadata.Scope
 	credentials.DPoPNonce = metadata.DPoPNonce
 	credentials.TokenType = metadata.TokenType
-	session, err := atproto.NewSession(atproto.SessionMetadata{Identity: metadata.Identity, Server: metadata.Server, ClientID: metadata.ClientID}, credentials)
+	session, err := atproto.NewSession(atproto.SessionMetadata{
+		Identity:             metadata.Identity,
+		Server:               metadata.Server,
+		ClientID:             metadata.ClientID,
+		AccessTokenExpiresAt: metadata.AccessTokenExpiresAt,
+	}, credentials)
 	if err != nil {
 		return atproto.Session{}, fmt.Errorf("restore %s: %w", did, err)
 	}
 	return session, nil
 }
+
 func (s *AuthStore) LoadActiveSession(ctx context.Context) (atproto.Session, error) {
 	index, err := s.read()
 	if err != nil {
@@ -193,6 +229,22 @@ func (s *AuthStore) LoadActiveSession(ctx context.Context) (atproto.Session, err
 	}
 	return s.LoadSession(ctx, index.ActiveDID)
 }
+
+// ActiveDID returns the locally selected account DID without loading credentials.
+func (s *AuthStore) ActiveDID(ctx context.Context) (string, error) {
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
+	index, err := s.read()
+	if err != nil {
+		return "", err
+	}
+	if index.ActiveDID == "" {
+		return "", ErrNoActiveAccount
+	}
+	return index.ActiveDID, nil
+}
+
 func (s *AuthStore) SetActive(ctx context.Context, did string) error {
 	index, err := s.read()
 	if err != nil {
@@ -204,6 +256,7 @@ func (s *AuthStore) SetActive(ctx context.Context, did string) error {
 	index.ActiveDID = did
 	return s.write(index)
 }
+
 func (s *AuthStore) DeleteSession(ctx context.Context, did string) error {
 	index, err := s.read()
 	if err != nil {
@@ -233,6 +286,7 @@ func nextActiveDID(accounts map[string]accountMetadata) string {
 	}
 	return keys[0]
 }
+
 func (s *AuthStore) ListAccounts(ctx context.Context) ([]AccountSummary, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -253,6 +307,7 @@ func (s *AuthStore) ListAccounts(ctx context.Context) ([]AccountSummary, error) 
 	}
 	return result, nil
 }
+
 func (s *AuthStore) read() (metadataIndex, error) {
 	data, err := os.ReadFile(s.metadataPath)
 	if err != nil {
@@ -270,9 +325,10 @@ func (s *AuthStore) read() (metadataIndex, error) {
 	}
 	return index, nil
 }
+
 func (s *AuthStore) write(index metadataIndex) error {
 	dir := filepath.Dir(s.metadataPath)
-	if err := os.MkdirAll(dir, 0700); err != nil {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return fmt.Errorf("create account metadata directory: %w", err)
 	}
 	data, err := json.MarshalIndent(index, "", "  ")
@@ -285,7 +341,7 @@ func (s *AuthStore) write(index metadataIndex) error {
 	}
 	name := file.Name()
 	defer os.Remove(name)
-	if err := file.Chmod(0600); err != nil {
+	if err := file.Chmod(0o600); err != nil {
 		_ = file.Close()
 		return err
 	}
