@@ -54,6 +54,15 @@ func TestRootHelpDescribesProtocolNamespace(t *testing.T) {
 	}
 }
 
+func TestAddAcceptsAtMostOneIntegration(t *testing.T) {
+	if err := addCmd.Args(addCmd, []string{"standard-site", "bluesky"}); err == nil {
+		t.Fatal("add command accepted multiple integrations")
+	}
+	if err := addCmd.Args(addCmd, []string{"standard-site"}); err != nil {
+		t.Fatalf("add command rejected one integration: %v", err)
+	}
+}
+
 func commandNames(commands []*cobra.Command) map[string]bool {
 	result := make(map[string]bool, len(commands))
 	for _, command := range commands {

@@ -1,0 +1,19 @@
+site:
+    url: https://exp1.projectdg.org
+integrations:
+    standard_site:
+        enabled: true
+        identity: did:plc:m4xyofkti3nhcejhgt3w7c34
+        publication: at://did:plc:m4xyofkti3nhcejhgt3w7c34/site.standard.publication/3muei65cjka2r
+        public_dir: .
+        paths:
+            - path: blog
+              publish: all
+    bluesky:
+        enabled: true
+        identity: did:plc:m4xyofkti3nhcejhgt3w7c34
+        paths:
+            - path: notes
+              publish: explicit
+            - path: posts
+              publish: all

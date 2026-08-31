@@ -4,10 +4,14 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
+	"sort"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/webxsid/pdg/internal/config"
 	"github.com/webxsid/pdg/internal/scan"
+	"github.com/webxsid/pdg/internal/state"
 )
 
 var scnCmd = &cobra.Command{
@@ -25,35 +29,54 @@ var scnCmd = &cobra.Command{
 }
 
 func runScan(ctx context.Context, dir string) error {
-	if dir == "" {
-		cfg, err := config.LoadConfig(config.DefaultFilename)
-		if err != nil {
-			return fmt.Errorf("failed to load config: %w", err)
-		}
-		dir = cfg.Site.OutputDir
+	cfg, err := config.LoadConfig(config.DefaultFilename)
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
 	}
-
+	if dir == "" {
+		dir = cfg.Scan.Dist
+	}
+	if dir == "" {
+		return fmt.Errorf("scan directory is not configured; pass a directory or add scan.dist to pdg.yaml")
+	}
 	info, err := os.Stat(dir)
 	if err != nil {
 		return fmt.Errorf("failed to stat directory: %w", err)
 	}
-
 	if !info.IsDir() {
 		return fmt.Errorf("%s is not a directory", dir)
 	}
-
-	filesystem := os.DirFS(dir)
-
-	scanner := scan.NewScanner()
-
-	result, err := scanner.Scan(ctx, filesystem)
+	previous, err := state.Load(filepath.Join(".pdg", "state.json"))
 	if err != nil {
-		return fmt.Errorf("failed to scan directory: %w", err)
+		return err
 	}
+	result, scanErr := scan.NewScanner().ScanStateful(ctx, os.DirFS(dir), scan.StatefulOptions{Config: *cfg, Previous: previous})
+	printStatefulScanResult(result)
+	if scanErr != nil {
+		return scanErr
+	}
+	return state.Write(filepath.Join(".pdg", "state.json"), result.State)
+}
 
-	printScanResult(result)
+func printStatefulScanResult(result scan.StatefulResult) {
+	fmt.Printf("Scanned documents: %d\n", len(result.Documents))
+	for _, document := range result.Documents {
+		fmt.Printf("- %s [%s] targets: %s\n", document.Path, document.Status, strings.Join(selectedTargets(document), ", "))
+	}
+	for _, err := range result.Errors {
+		fmt.Printf("! %s\n", err)
+	}
+}
 
-	return nil
+func selectedTargets(document *state.DocumentState) []string {
+	result := []string{}
+	for target, value := range document.Targets {
+		if value.Selected {
+			result = append(result, string(target))
+		}
+	}
+	sort.Strings(result)
+	return result
 }
 
 func printScanResult(result scan.Result) {

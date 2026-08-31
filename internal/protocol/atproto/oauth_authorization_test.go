@@ -281,6 +281,7 @@ func TestAuthorize(t *testing.T) {
 			DID: did,
 			PDS: pds,
 		},
+		"atproto",
 		openURL,
 	)
 	if err != nil {

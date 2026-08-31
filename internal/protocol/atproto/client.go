@@ -60,12 +60,17 @@ type Session struct {
 // Login resolves a handle, completes OAuth authorization, and returns an
 // in-memory authenticated session.
 func (c *Client) Login(ctx context.Context, handle string, openURL authorizationURLOpener) (Session, error) {
+	return c.LoginWithScope(ctx, handle, "atproto", openURL)
+}
+
+// LoginWithScope authenticates an identity with the requested OAuth scopes.
+func (c *Client) LoginWithScope(ctx context.Context, handle, scope string, openURL authorizationURLOpener) (Session, error) {
 	identity, err := c.ResolveIdentity(ctx, handle)
 	if err != nil {
 		return Session{}, fmt.Errorf("resolve ATProto identity: %w", err)
 	}
 
-	authorization, err := c.oauth.authorize(ctx, identity, openURL)
+	authorization, err := c.oauth.authorize(ctx, identity, scope, openURL)
 	if err != nil {
 		return Session{}, fmt.Errorf("authorize ATProto identity: %w", err)
 	}

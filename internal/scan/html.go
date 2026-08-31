@@ -2,10 +2,12 @@ package scan
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"time"
 
+	"github.com/webxsid/pdg/internal/state"
 	"golang.org/x/net/html"
 )
 
@@ -33,6 +35,42 @@ func ParseHTML(r io.Reader) (Document, error) {
 			}
 
 		case "meta":
+			name := attr(node, "name")
+			content := strings.TrimSpace(attr(node, "content"))
+			switch name {
+			case "pdg:title":
+				doc.Title = content
+			case "pdg:description":
+				doc.Description = content
+			case "pdg:published-at":
+				publishedAt = content
+			case "pdg:updated-at":
+				if content != "" {
+					t, parseErr := time.Parse(time.RFC3339, content)
+					if parseErr != nil {
+						return
+					}
+					doc.UpdatedAt = &t
+				}
+			case "pdg:tag":
+				if content != "" {
+					doc.Tags = append(doc.Tags, content)
+				}
+			case "pdg:targets":
+				doc.TargetsExplicit = true
+				if content != "" {
+					targets, parseErr := parseTargets(content)
+					if parseErr == nil {
+						doc.Targets = targets
+					}
+				}
+			}
+			if attr(node, "property") == "og:description" && doc.Description == "" {
+				doc.Description = content
+			}
+			if attr(node, "property") == "og:title" && doc.Title == "" {
+				doc.Title = content
+			}
 			if attr(node, "property") == "article:published_time" {
 				publishedAt = attr(node, "content")
 			}
@@ -64,6 +102,38 @@ func ParseHTML(r io.Reader) (Document, error) {
 	}
 
 	return doc, nil
+}
+
+func parseTargets(content string) ([]state.PublicationTarget, error) {
+	parts := strings.Split(content, ",")
+	seen := map[state.PublicationTarget]bool{}
+	result := make([]state.PublicationTarget, 0, len(parts))
+	for _, part := range parts {
+		value := strings.TrimSpace(part)
+		if value == "" {
+			return nil, errors.New("empty target")
+		}
+		if value == "none" {
+			if len(parts) != 1 {
+				return nil, errors.New("none must be used alone")
+			}
+			return nil, nil
+		}
+		var target state.PublicationTarget
+		switch value {
+		case string(state.TargetStandardSite):
+			target = state.TargetStandardSite
+		case string(state.TargetBluesky):
+			target = state.TargetBluesky
+		default:
+			return nil, fmt.Errorf("unknown target %q", value)
+		}
+		if !seen[target] {
+			seen[target] = true
+			result = append(result, target)
+		}
+	}
+	return result, nil
 }
 
 func walk(node *html.Node, visit func(*html.Node)) {

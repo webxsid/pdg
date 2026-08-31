@@ -12,6 +12,9 @@ import (
 type fakeXRPCSessions struct{ session Session }
 
 func (f *fakeXRPCSessions) LoadActiveSession(context.Context) (Session, error) { return f.session, nil }
+func (f *fakeXRPCSessions) LoadSession(context.Context, string) (Session, error) {
+	return f.session, nil
+}
 func (f *fakeXRPCSessions) RefreshSession(context.Context, *Client, string) (Session, error) {
 	return f.session, nil
 }

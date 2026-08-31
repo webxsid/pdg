@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/BurntSushi/toml"
+	"gopkg.in/yaml.v3"
 )
 
-const DefaultFilename = "pdg.toml"
+const DefaultFilename = "pdg.yaml"
 
 // LoadConfig loads the configuration from the specified file path.
 func LoadConfig(path string) (*Config, error) {
@@ -17,8 +17,14 @@ func LoadConfig(path string) (*Config, error) {
 	}
 
 	var config Config
-	if _, err := toml.Decode(string(data), &config); err != nil {
+	if err := yaml.Unmarshal(data, &config); err != nil {
 		return nil, fmt.Errorf("failed to decode config file: %w", err)
+	}
+	if config.Integrations.StandardSite.Paths, err = NormalizePublicationPaths(config.Integrations.StandardSite.Paths); err != nil {
+		return nil, fmt.Errorf("validate Standard.site paths: %w", err)
+	}
+	if config.Integrations.Bluesky.Paths, err = NormalizePublicationPaths(config.Integrations.Bluesky.Paths); err != nil {
+		return nil, fmt.Errorf("validate Bluesky paths: %w", err)
 	}
 
 	return &config, nil

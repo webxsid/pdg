@@ -34,8 +34,8 @@ Use Go’s standard `testing` package with table-driven tests where cases share 
 
 ## Commit & Pull Request Guidelines
 
-Use short, imperative Conventional Commit-style subjects, matching history such as `feat(atproto): add ...` and `chore: ...`. Keep commits focused. Pull requests should explain the behavior and rationale, identify relevant commands/tests run, call out protocol or configuration changes, and include rendered UI screenshots when web components visibly change. Do not commit credentials, OAuth tokens, generated binaries, or local `pdg.toml` files.
+Use short, imperative Conventional Commit-style subjects, matching history such as `feat(atproto): add ...` and `chore: ...`. Keep commits focused. Pull requests should explain the behavior and rationale, identify relevant commands/tests run, call out protocol or configuration changes, and include rendered UI screenshots when web components visibly change. Do not commit credentials, OAuth tokens, generated binaries, or local site-specific `pdg.yaml` files.
 
 ## Security & Configuration
 
-Treat identity and OAuth data as sensitive. Validate external URLs and DID documents at boundaries, preserve context cancellation, and avoid logging tokens or authorization codes. `pdg init` writes `pdg.toml`; inspect it before committing and keep site-specific values local.
+Treat identity and OAuth data as sensitive. Validate external URLs and DID documents at boundaries, preserve context cancellation, and avoid logging tokens or authorization codes. `pdg init` writes `pdg.yaml`; inspect it before committing and keep site-specific values local.

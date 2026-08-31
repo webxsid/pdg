@@ -132,6 +132,7 @@ func pkceChallenge(verifier string) string {
 func (c *oauthClient) authorize(
 	ctx context.Context,
 	identity Identity,
+	scope string,
 	openURL authorizationURLOpener,
 ) (authorizationResult, error) {
 	if openURL == nil {
@@ -172,7 +173,9 @@ func (c *oauthClient) authorize(
 
 	redirectURI := callbackServer.redirectURI()
 
-	const scope = "atproto"
+	if scope == "" {
+		return authorizationResult{}, fmt.Errorf("OAuth scope is empty")
+	}
 
 	clientID := localhostClientID(
 		redirectURI,

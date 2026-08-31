@@ -14,6 +14,7 @@ import (
 
 // SessionStore provides the persisted session operations needed by XRPC.
 type SessionStore interface {
+	LoadSession(context.Context, string) (Session, error)
 	LoadActiveSession(context.Context) (Session, error)
 	RefreshSession(context.Context, *Client, string) (Session, error)
 	SaveSession(context.Context, Session, bool) error
@@ -43,6 +44,27 @@ func (c *XRPCClient) Do(ctx context.Context, method, nsid string, body any, resu
 		return fmt.Errorf("load active ATProto session: %w", err)
 	}
 	return c.do(ctx, session, method, nsid, body, result, false, false)
+}
+
+// DoWithSession sends an authenticated request using the supplied explicit session.
+func (c *XRPCClient) DoWithSession(ctx context.Context, session Session, method, nsid string, body any, result any) error {
+	return c.do(ctx, session, method, nsid, body, result, false, false)
+}
+
+// CreateRecord creates an ATProto record using the server-generated rkey.
+func (c *XRPCClient) CreateRecord(ctx context.Context, session Session, collection string, record any) (string, error) {
+	var result struct {
+		URI string `json:"uri"`
+	}
+	if err := c.DoWithSession(ctx, session, http.MethodPost, "com.atproto.repo.createRecord", map[string]any{
+		"repo": session.Identity.DID, "collection": collection, "record": record,
+	}, &result); err != nil {
+		return "", err
+	}
+	if result.URI == "" {
+		return "", fmt.Errorf("createRecord response missing uri")
+	}
+	return result.URI, nil
 }
 
 func (c *XRPCClient) do(ctx context.Context, session Session, method, nsid string, body, result any, nonceRetried, refreshed bool) error {
