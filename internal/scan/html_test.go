@@ -70,3 +70,28 @@ func TestParseHTML(t *testing.T) {
 		)
 	}
 }
+
+func TestParseHTMLTargetsNone(t *testing.T) {
+	input := `<html><head><title>Hidden</title><meta name="pdg:targets" content="none"></head><body><article>Content</article></body></html>`
+	doc, err := ParseHTML(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("ParseHTML() error = %v", err)
+	}
+	if !doc.TargetsExplicit || !doc.TargetsNone {
+		t.Fatalf("targets metadata = explicit %v, none %v", doc.TargetsExplicit, doc.TargetsNone)
+	}
+	if len(doc.Targets) != 0 {
+		t.Fatalf("Targets = %v, want none", doc.Targets)
+	}
+}
+
+func TestParseHTMLRejectsInvalidTargets(t *testing.T) {
+	for _, value := range []string{"", "none,bluesky", "unknown"} {
+		t.Run(value, func(t *testing.T) {
+			input := `<html><head><title>Invalid</title><meta name="pdg:targets" content="` + value + `"></head><body><article>Content</article></body></html>`
+			if _, err := ParseHTML(strings.NewReader(input)); err == nil {
+				t.Fatal("ParseHTML() unexpectedly succeeded")
+			}
+		})
+	}
+}

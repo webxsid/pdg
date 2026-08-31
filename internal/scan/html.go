@@ -19,6 +19,7 @@ func ParseHTML(r io.Reader) (Document, error) {
 
 	var doc Document
 	var publishedAt string
+	var targetErr error
 
 	walk(root, func(node *html.Node) {
 		if node.Type != html.ElementNode {
@@ -60,9 +61,14 @@ func ParseHTML(r io.Reader) (Document, error) {
 				doc.TargetsExplicit = true
 				if content != "" {
 					targets, parseErr := parseTargets(content)
-					if parseErr == nil {
+					if parseErr != nil {
+						targetErr = parseErr
+					} else {
 						doc.Targets = targets
+						doc.TargetsNone = len(targets) == 0
 					}
+				} else {
+					targetErr = errors.New("empty target list")
 				}
 			}
 			if attr(node, "property") == "og:description" && doc.Description == "" {
@@ -80,6 +86,9 @@ func ParseHTML(r io.Reader) (Document, error) {
 
 		}
 	})
+	if targetErr != nil {
+		return Document{}, fmt.Errorf("invalid pdg:targets metadata: %w", targetErr)
+	}
 
 	if publishedAt != "" {
 		t, err := time.Parse(time.RFC3339, publishedAt)
@@ -91,10 +100,6 @@ func ParseHTML(r io.Reader) (Document, error) {
 
 	if doc.Title == "" {
 		return Document{}, errors.New("missing title")
-	}
-
-	if doc.CanonicalURL == "" {
-		return Document{}, errors.New("missing canonical URL")
 	}
 
 	if doc.TextContent == "" {
@@ -117,7 +122,7 @@ func parseTargets(content string) ([]state.PublicationTarget, error) {
 			if len(parts) != 1 {
 				return nil, errors.New("none must be used alone")
 			}
-			return nil, nil
+			return []state.PublicationTarget{}, nil
 		}
 		var target state.PublicationTarget
 		switch value {
@@ -159,7 +164,7 @@ func textContent(node *html.Node) string {
 		if node.Type != html.TextNode {
 			return
 		}
-		value := strings.TrimSpace(node.Data)
+		value := strings.Join(strings.Fields(node.Data), " ")
 		if value == "" {
 			return
 		}

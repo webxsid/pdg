@@ -7,11 +7,13 @@ type Capability string
 
 const (
 	CapabilityStandardSitePublication Capability = "standard-site-publication"
+	CapabilityStandardSiteDocuments   Capability = "standard-site-documents"
 	CapabilityBlueskyPosting          Capability = "bluesky-posting"
 )
 
 const (
 	standardSitePublicationScope = "repo:site.standard.publication?action=create&action=update&action=delete"
+	standardSiteDocumentsScope   = "repo:site.standard.document?action=create&action=update"
 	blueskyPostingScope          = "repo:app.bsky.feed.post?action=create&action=delete"
 )
 
@@ -22,6 +24,8 @@ func ScopesForCapabilities(capabilities ...Capability) []string {
 		switch capability {
 		case CapabilityStandardSitePublication:
 			seen[standardSitePublicationScope] = struct{}{}
+		case CapabilityStandardSiteDocuments:
+			seen[standardSiteDocumentsScope] = struct{}{}
 		case CapabilityBlueskyPosting:
 			seen[blueskyPostingScope] = struct{}{}
 		}

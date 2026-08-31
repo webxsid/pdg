@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"net/url"
 	"path"
 	"sort"
 	"strings"
@@ -40,12 +41,25 @@ func (s *Scanner) ScanStateful(ctx context.Context, filesystem fs.FS, options St
 		if entry.IsDir() || !isHTML(filePath) {
 			return nil
 		}
-		scope, applicable, err := selectScope(filePath, options.Config.Scan.Scopes)
+		websitePath, err := websitePath(filePath)
 		if err != nil {
 			result.Errors = append(result.Errors, fmt.Errorf("%s: %w", filePath, err))
 			return nil
 		}
-		if !applicable {
+		prior := options.Previous.Documents[websitePath]
+		potential := hasPotentialTarget(websitePath, options.Config)
+		if seen[websitePath] {
+			result.Errors = append(result.Errors, fmt.Errorf("path collision for %s (including %s)", websitePath, filePath))
+			return nil
+		}
+		seen[websitePath] = true
+		if !potential {
+			if prior != nil {
+				copy := *prior
+				copy.Status = state.StatusOutOfScope
+				current.Documents[websitePath] = &copy
+				result.Documents = append(result.Documents, &copy)
+			}
 			return nil
 		}
 		file, err := filesystem.Open(filePath)
@@ -59,36 +73,31 @@ func (s *Scanner) ScanStateful(ctx context.Context, filesystem fs.FS, options St
 			result.Errors = append(result.Errors, fmt.Errorf("%s: %w", filePath, parseErr))
 			return nil
 		}
-		websitePath, err := websitePath(filePath)
-		if err != nil {
-			result.Errors = append(result.Errors, fmt.Errorf("%s: %w", filePath, err))
-			return nil
-		}
-		if seen[websitePath] {
-			result.Errors = append(result.Errors, fmt.Errorf("path collision for %s", websitePath))
-			return nil
-		}
-		seen[websitePath] = true
-		targets := scopeTargets(scope)
-		if scope.Mode == "explicit" && !doc.TargetsExplicit {
-			return nil
-		}
-		if doc.TargetsExplicit {
-			targets = doc.Targets
-		}
+		targets := effectiveTargets(websitePath, doc, options.Config)
 		if err := validateEnabledTargets(targets, options.Config); err != nil {
 			result.Errors = append(result.Errors, fmt.Errorf("%s: %w", websitePath, err))
 			return nil
 		}
 		metadata := state.DocumentMetadata{Title: doc.Title, Description: doc.Description, TextContent: doc.TextContent, Tags: doc.Tags}
+		canonical := doc.CanonicalURL
+		if canonical == "" {
+			base, parseErr := url.Parse(options.Config.Site.URL)
+			if parseErr != nil || base.Scheme == "" || base.Host == "" {
+				result.Errors = append(result.Errors, fmt.Errorf("%s: invalid site URL", websitePath))
+				return nil
+			}
+			canonical = strings.TrimRight(base.String(), "/") + websitePath
+		}
 		if !doc.PublishedAt.IsZero() {
 			value := doc.PublishedAt
 			metadata.PublishedAt = &value
 		}
 		metadata.UpdatedAt = doc.UpdatedAt
-		fingerprint := state.Fingerprint(metadata, websitePath, doc.CanonicalURL)
-		prior := options.Previous.Documents[websitePath]
+		fingerprint := state.Fingerprint(metadata, websitePath, canonical)
 		status := state.StatusDiscovered
+		if !potential {
+			status = state.StatusOutOfScope
+		}
 		if prior != nil {
 			if prior.Fingerprint == fingerprint {
 				status = state.StatusUnchanged
@@ -102,8 +111,15 @@ func (s *Scanner) ScanStateful(ctx context.Context, filesystem fs.FS, options St
 				targetMap[target] = value
 			}
 		}
+		for _, target := range potentialTargets(websitePath, options.Config) {
+			if _, exists := targetMap[target]; !exists {
+				targetMap[target] = state.TargetState{}
+			}
+		}
 		for _, target := range targets {
-			targetMap[target] = state.TargetState{Selected: true}
+			value := targetMap[target]
+			value.Selected = true
+			targetMap[target] = value
 		}
 		for target, value := range targetMap {
 			if !containsTarget(targets, target) {
@@ -111,10 +127,10 @@ func (s *Scanner) ScanStateful(ctx context.Context, filesystem fs.FS, options St
 				targetMap[target] = value
 			}
 		}
-		if len(targets) == 0 {
+		if potential && len(targets) == 0 {
 			status = state.StatusUnpublished
 		}
-		documentState := &state.DocumentState{Path: websitePath, Source: filePath, CanonicalURL: doc.CanonicalURL, Status: status, Fingerprint: fingerprint, Metadata: metadata, Targets: targetMap}
+		documentState := &state.DocumentState{Path: websitePath, Source: filePath, CanonicalURL: canonical, Status: status, Fingerprint: fingerprint, Metadata: metadata, Targets: targetMap}
 		current.Documents[websitePath] = documentState
 		result.Documents = append(result.Documents, documentState)
 		return nil
@@ -207,11 +223,11 @@ func validateEnabledTargets(targets []state.PublicationTarget, cfg config.Config
 	for _, target := range targets {
 		switch target {
 		case state.TargetStandardSite:
-			if !cfg.ATProto.StandardSite.Enabled {
+			if !cfg.Integrations.StandardSite.Enabled {
 				return fmt.Errorf("target %q is not enabled", target)
 			}
 		case state.TargetBluesky:
-			if !cfg.ATProto.Bluesky.Enabled {
+			if !cfg.Integrations.Bluesky.Enabled {
 				return fmt.Errorf("target %q is not enabled", target)
 			}
 		default:
@@ -219,4 +235,75 @@ func validateEnabledTargets(targets []state.PublicationTarget, cfg config.Config
 		}
 	}
 	return nil
+}
+
+func effectiveTargets(websitePath string, doc Document, cfg config.Config) []state.PublicationTarget {
+	result := potentialTargets(websitePath, cfg)
+	if doc.TargetsNone {
+		return result[:0]
+	}
+	filtered := result[:0]
+	for _, target := range result {
+		mode := matchingPublicationMode(websitePath, target, cfg)
+		if mode != config.PublicationExplicit || containsTarget(doc.Targets, target) {
+			filtered = append(filtered, target)
+		}
+	}
+	return filtered
+}
+
+func potentialTargets(websitePath string, cfg config.Config) []state.PublicationTarget {
+	result := []state.PublicationTarget{}
+	if matchesPublicationPath(websitePath, cfg.Integrations.StandardSite.Paths) && cfg.Integrations.StandardSite.Enabled {
+		result = append(result, state.TargetStandardSite)
+	}
+	if matchesPublicationPath(websitePath, cfg.Integrations.Bluesky.Paths) && cfg.Integrations.Bluesky.Enabled {
+		result = append(result, state.TargetBluesky)
+	}
+	return result
+}
+
+func matchesPublicationPath(document string, paths []config.PublicationPath) bool {
+	return matchingPath(document, paths) != ""
+}
+
+func hasPotentialTarget(document string, cfg config.Config) bool {
+	return (cfg.Integrations.StandardSite.Enabled && matchesPublicationPath(document, cfg.Integrations.StandardSite.Paths)) ||
+		(cfg.Integrations.Bluesky.Enabled && matchesPublicationPath(document, cfg.Integrations.Bluesky.Paths))
+}
+
+func matchingPublicationMode(document string, target state.PublicationTarget, cfg config.Config) config.PublicationMode {
+	paths := cfg.Integrations.StandardSite.Paths
+	if target == state.TargetBluesky {
+		paths = cfg.Integrations.Bluesky.Paths
+	}
+	bestPath, bestMode := "", config.PublicationMode("")
+	for _, item := range paths {
+		value := state.NormalizePath(item.Path)
+		if value == "/" || document == value || strings.HasPrefix(document, value+"/") {
+			if pathDepth(value) > pathDepth(bestPath) {
+				bestPath, bestMode = value, item.Publish
+			}
+		}
+	}
+	return bestMode
+}
+
+func matchingPath(document string, paths []config.PublicationPath) string {
+	best := ""
+	for _, item := range paths {
+		value := state.NormalizePath(item.Path)
+		if value == "/" || document == value || strings.HasPrefix(document, value+"/") {
+			if pathDepth(value) > pathDepth(best) {
+				best = value
+			}
+		}
+	}
+	return best
+}
+func pathDepth(value string) int {
+	if value == "" || value == "/" {
+		return 0
+	}
+	return len(strings.Split(strings.Trim(value, "/"), "/"))
 }

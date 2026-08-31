@@ -39,7 +39,11 @@ type DocumentMetadata struct {
 }
 
 type TargetState struct {
-	Selected bool `json:"selected"`
+	Selected             bool       `json:"selected"`
+	URI                  string     `json:"uri,omitempty"`
+	CID                  string     `json:"cid,omitempty"`
+	PublishedFingerprint string     `json:"published_fingerprint,omitempty"`
+	PublishedAt          *time.Time `json:"published_at,omitempty"`
 }
 type TargetChange struct {
 	Target PublicationTarget `json:"target"`

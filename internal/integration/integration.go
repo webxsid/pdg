@@ -22,8 +22,11 @@ type Definition struct {
 }
 
 var definitions = map[Integration]Definition{
-	StandardSite: {Name: StandardSite, Capabilities: []atproto.Capability{atproto.CapabilityStandardSitePublication}},
-	Bluesky:      {Name: Bluesky, Capabilities: []atproto.Capability{atproto.CapabilityBlueskyPosting}},
+	StandardSite: {Name: StandardSite, Capabilities: []atproto.Capability{
+		atproto.CapabilityStandardSitePublication,
+		atproto.CapabilityStandardSiteDocuments,
+	}},
+	Bluesky: {Name: Bluesky, Capabilities: []atproto.Capability{atproto.CapabilityBlueskyPosting}},
 }
 
 func Resolve(name string) (Definition, error) {

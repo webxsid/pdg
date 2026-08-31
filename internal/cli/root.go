@@ -16,6 +16,7 @@ func init() {
 	rootCmd.AddCommand(scnCmd)
 	rootCmd.AddCommand(initCmd)
 	rootCmd.AddCommand(atprotoCmd)
+	rootCmd.AddCommand(publishCmd)
 }
 
 func Execute() {

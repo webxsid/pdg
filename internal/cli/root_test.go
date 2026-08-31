@@ -10,7 +10,7 @@ import (
 
 func TestCommandNamespaces(t *testing.T) {
 	rootNames := commandNames(rootCmd.Commands())
-	for _, name := range []string{"init", "scan", "atproto"} {
+	for _, name := range []string{"init", "scan", "publish", "inject", "atproto"} {
 		if !rootNames[name] {
 			t.Errorf("root command %q is missing", name)
 		}

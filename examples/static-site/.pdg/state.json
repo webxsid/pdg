@@ -1,6 +1,114 @@
 {
   "version": 1,
-  "documents": {},
+  "documents": {
+    "/blog/hello-atmosphere": {
+      "path": "/blog/hello-atmosphere",
+      "source": "blog/hello-atmosphere/index.html",
+      "canonical_url": "https://example.com/blog/hello-atmosphere",
+      "status": "unchanged",
+      "fingerprint": "sha256:270134e46054eb530a8c21e84409c167cda146913ed148cc53d52ae00bc9710e",
+      "metadata": {
+        "title": "Hello Atmosphere",
+        "description": "An all-target blog article.",
+        "published_at": "2026-08-23T08:00:00Z",
+        "text_content": "Hello Atmosphere This is an existing website being connected to the open social web."
+      },
+      "targets": {
+        "standard-site": {
+          "selected": true,
+          "uri": "at://did:plc:m4xyofkti3nhcejhgt3w7c34/site.standard.document/3muf2upbjcb2r",
+          "published_fingerprint": "sha256:270134e46054eb530a8c21e84409c167cda146913ed148cc53d52ae00bc9710e"
+        }
+      }
+    },
+    "/blog/none": {
+      "path": "/blog/none",
+      "source": "blog/none/index.html",
+      "canonical_url": "https://exp1.projectdg.org/blog/none",
+      "status": "unpublished",
+      "fingerprint": "sha256:840c0893308762a84625144790d0e0d18c687cad478254a0d25d175c7f1c5938",
+      "metadata": {
+        "title": "Private Build Notes",
+        "text_content": "Private Build Notes This page is under the all-target blog path but is explicitly unpublished."
+      },
+      "targets": {
+        "standard-site": {
+          "selected": false
+        }
+      }
+    },
+    "/notes/draft": {
+      "path": "/notes/draft",
+      "source": "notes/draft/index.html",
+      "canonical_url": "https://exp1.projectdg.org/notes/draft",
+      "status": "unpublished",
+      "fingerprint": "sha256:fc67189afe6d73358f70b91e9908fa04e081af83400674689e20999a2640b65e",
+      "metadata": {
+        "title": "Unpublished Draft",
+        "description": "A notes page without explicit target metadata.",
+        "text_content": "Unpublished Draft This page matches the explicit notes rule but does not opt into Bluesky."
+      },
+      "targets": {
+        "bluesky": {
+          "selected": false
+        }
+      }
+    },
+    "/notes/field-notes": {
+      "path": "/notes/field-notes",
+      "source": "notes/field-notes/index.html",
+      "canonical_url": "https://exp1.projectdg.org/notes/field-notes",
+      "status": "unchanged",
+      "fingerprint": "sha256:074c629079dd12291e228f0dfe478c335e58580d7a3734ee84aebf0ee02b57c4",
+      "metadata": {
+        "title": "Field Notes",
+        "description": "Notes explicitly selected for Bluesky publication.",
+        "tags": [
+          "notes",
+          "examples"
+        ],
+        "text_content": "Field Notes This notes page opts into the explicit Bluesky path."
+      },
+      "targets": {
+        "bluesky": {
+          "selected": true
+        }
+      }
+    },
+    "/notes/standard-only": {
+      "path": "/notes/standard-only",
+      "source": "notes/standard-only/index.html",
+      "canonical_url": "https://exp1.projectdg.org/notes/standard-only",
+      "status": "unpublished",
+      "fingerprint": "sha256:29425786cd02cfa3cd3cbf73ff4d2fb4d683c9feee6cb53fbf42a5fbd851fcd8",
+      "metadata": {
+        "title": "Standard.site Notes",
+        "text_content": "Standard.site Notes This page demonstrates an explicit target that is not enabled by the notes path."
+      },
+      "targets": {
+        "bluesky": {
+          "selected": false
+        }
+      }
+    },
+    "/posts/launch": {
+      "path": "/posts/launch",
+      "source": "posts/launch.html",
+      "canonical_url": "https://exp1.projectdg.org/posts/launch",
+      "status": "unpublished",
+      "fingerprint": "sha256:718dbed56c83fde7d354386be7217278e89cc4618db7ec52b4a8b33b66e78223",
+      "metadata": {
+        "title": "Project Launch",
+        "published_at": "2026-08-30T10:00:00Z",
+        "text_content": "Project Launch This post is selected for Bluesky without a page-level target tag."
+      },
+      "targets": {
+        "bluesky": {
+          "selected": false
+        }
+      }
+    }
+  },
   "integrations": {
     "standard-site": {
       "publication": {

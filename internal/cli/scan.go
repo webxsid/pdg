@@ -37,7 +37,10 @@ func runScan(ctx context.Context, dir string) error {
 		dir = cfg.Scan.Dist
 	}
 	if dir == "" {
-		return fmt.Errorf("scan directory is not configured; pass a directory or add scan.dist to pdg.yaml")
+		dir = cfg.Integrations.StandardSite.PublicDir
+	}
+	if dir == "" {
+		dir = "."
 	}
 	info, err := os.Stat(dir)
 	if err != nil {
@@ -51,6 +54,7 @@ func runScan(ctx context.Context, dir string) error {
 		return err
 	}
 	result, scanErr := scan.NewScanner().ScanStateful(ctx, os.DirFS(dir), scan.StatefulOptions{Config: *cfg, Previous: previous})
+	fmt.Printf("Scanning %s\n", dir)
 	printStatefulScanResult(result)
 	if scanErr != nil {
 		return scanErr
@@ -59,7 +63,7 @@ func runScan(ctx context.Context, dir string) error {
 }
 
 func printStatefulScanResult(result scan.StatefulResult) {
-	fmt.Printf("Scanned documents: %d\n", len(result.Documents))
+	fmt.Printf("Scanned publication candidates: %d\n", len(result.Documents))
 	for _, document := range result.Documents {
 		fmt.Printf("- %s [%s] targets: %s\n", document.Path, document.Status, strings.Join(selectedTargets(document), ", "))
 	}

@@ -17,4 +17,5 @@ type Document struct {
 	Tags            []string                  `json:"tags"`
 	Targets         []state.PublicationTarget `json:"targets"`
 	TargetsExplicit bool                      `json:"targets_explicit"`
+	TargetsNone     bool                      `json:"targets_none"`
 }
