@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"path/filepath"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/webxsid/pdg/internal/config"
@@ -13,6 +14,9 @@ import (
 )
 
 var verifyLive bool
+
+const liveVerificationTimeout = 30 * time.Second
+
 var verifyCmd = &cobra.Command{Use: "verify [integration]", Short: "Verify local integration artifacts", Args: cobra.MaximumNArgs(1), RunE: runVerify}
 var repairCmd = &cobra.Command{Use: "repair [integration]", Short: "Repair local integration artifacts", Args: cobra.MaximumNArgs(1), RunE: runRepair}
 
@@ -43,7 +47,7 @@ func runVerify(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("live verification for %s is not implemented yet", name)
 		}
 		fmt.Println("Verifying deployed Standard.site...")
-		findings := reconcile.VerifyStandardSiteLiveWithProgress(cmd.Context(), project, &http.Client{}, func(resource, rawURL string) {
+		findings := reconcile.VerifyStandardSiteLiveWithProgress(cmd.Context(), project, &http.Client{Timeout: liveVerificationTimeout}, func(resource, rawURL string) {
 			fmt.Printf("  Checking %s (%s)\n", resource, rawURL)
 		})
 		printFindings(findings)

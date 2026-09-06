@@ -2,8 +2,10 @@ package cli
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/spf13/cobra"
@@ -25,6 +27,9 @@ var initCmd = &cobra.Command{
 		if siteURL == "" {
 			return fmt.Errorf("site URL cannot be empty")
 		}
+		if err := validateSiteURL(siteURL); err != nil {
+			return err
+		}
 		cfg := config.Config{Site: config.SiteConfig{URL: siteURL}}
 		if err := config.WriteConfig(config.DefaultFilename, cfg); err != nil {
 			return err
@@ -42,6 +47,14 @@ var initCmd = &cobra.Command{
 		fmt.Printf("PDG initialized. Configuration written to %s\n", config.DefaultFilename)
 		return nil
 	},
+}
+
+func validateSiteURL(raw string) error {
+	parsed, err := url.Parse(raw)
+	if err != nil || parsed.Host == "" || parsed.User != nil || !strings.EqualFold(parsed.Scheme, "http") && !strings.EqualFold(parsed.Scheme, "https") {
+		return fmt.Errorf("site URL must be an absolute http or https URL")
+	}
+	return nil
 }
 
 func init() {
