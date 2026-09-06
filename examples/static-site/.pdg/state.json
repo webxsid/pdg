@@ -4,9 +4,9 @@
     "/blog/hello-atmosphere": {
       "path": "/blog/hello-atmosphere",
       "source": "blog/hello-atmosphere/index.html",
-      "canonical_url": "https://example.com/blog/hello-atmosphere",
+      "canonical_url": "https://exp1.projectdg.org/blog/hello-atmosphere",
       "status": "unchanged",
-      "fingerprint": "sha256:270134e46054eb530a8c21e84409c167cda146913ed148cc53d52ae00bc9710e",
+      "fingerprint": "sha256:cb624a1e3994ad78e10a328c39894c7a68b9ba16997d8b275c54c7854993f85d",
       "metadata": {
         "title": "Hello Atmosphere",
         "description": "An all-target blog article.",
@@ -16,8 +16,8 @@
       "targets": {
         "standard-site": {
           "selected": true,
-          "uri": "at://did:plc:m4xyofkti3nhcejhgt3w7c34/site.standard.document/3muf2upbjcb2r",
-          "published_fingerprint": "sha256:270134e46054eb530a8c21e84409c167cda146913ed148cc53d52ae00bc9710e"
+          "uri": "at://did:plc:m4xyofkti3nhcejhgt3w7c34/site.standard.document/3mutvfvkq2f2s",
+          "published_fingerprint": "sha256:cb624a1e3994ad78e10a328c39894c7a68b9ba16997d8b275c54c7854993f85d"
         }
       }
     },
@@ -49,7 +49,7 @@
         "text_content": "Unpublished Draft This page matches the explicit notes rule but does not opt into Bluesky."
       },
       "targets": {
-        "bluesky": {
+        "standard-site": {
           "selected": false
         }
       }
@@ -59,19 +59,23 @@
       "source": "notes/field-notes/index.html",
       "canonical_url": "https://exp1.projectdg.org/notes/field-notes",
       "status": "unchanged",
-      "fingerprint": "sha256:074c629079dd12291e228f0dfe478c335e58580d7a3734ee84aebf0ee02b57c4",
+      "fingerprint": "sha256:6e7a6257654fa31859bc18aa074cae6a7e46cc466ed481ef37b1cfa649ed036e",
       "metadata": {
         "title": "Field Notes",
         "description": "Notes explicitly selected for Bluesky publication.",
+        "published_at": "2026-08-23T08:00:00Z",
         "tags": [
           "notes",
           "examples"
         ],
-        "text_content": "Field Notes This notes page opts into the explicit Bluesky path."
+        "text_content": "Field Notes This notes page opts into the explicit Bluesky path.",
+        "bluesky": "Field notes from the Project DG experiment."
       },
       "targets": {
-        "bluesky": {
-          "selected": true
+        "standard-site": {
+          "selected": true,
+          "uri": "at://did:plc:m4xyofkti3nhcejhgt3w7c34/site.standard.document/3mutvmdeodi2i",
+          "published_fingerprint": "sha256:6e7a6257654fa31859bc18aa074cae6a7e46cc466ed481ef37b1cfa649ed036e"
         }
       }
     },
@@ -79,15 +83,18 @@
       "path": "/notes/standard-only",
       "source": "notes/standard-only/index.html",
       "canonical_url": "https://exp1.projectdg.org/notes/standard-only",
-      "status": "unpublished",
-      "fingerprint": "sha256:29425786cd02cfa3cd3cbf73ff4d2fb4d683c9feee6cb53fbf42a5fbd851fcd8",
+      "status": "unchanged",
+      "fingerprint": "sha256:492b670a64fd61ae9953dd033ae40de9f910bf61b8cf14ac7456c78ee160f84e",
       "metadata": {
         "title": "Standard.site Notes",
+        "published_at": "2026-08-30T10:00:00Z",
         "text_content": "Standard.site Notes This page demonstrates an explicit target that is not enabled by the notes path."
       },
       "targets": {
-        "bluesky": {
-          "selected": false
+        "standard-site": {
+          "selected": true,
+          "uri": "at://did:plc:m4xyofkti3nhcejhgt3w7c34/site.standard.document/3mutvmduzj62u",
+          "published_fingerprint": "sha256:492b670a64fd61ae9953dd033ae40de9f910bf61b8cf14ac7456c78ee160f84e"
         }
       }
     },
@@ -95,16 +102,19 @@
       "path": "/posts/launch",
       "source": "posts/launch.html",
       "canonical_url": "https://exp1.projectdg.org/posts/launch",
-      "status": "unpublished",
+      "status": "unchanged",
       "fingerprint": "sha256:718dbed56c83fde7d354386be7217278e89cc4618db7ec52b4a8b33b66e78223",
       "metadata": {
         "title": "Project Launch",
         "published_at": "2026-08-30T10:00:00Z",
-        "text_content": "Project Launch This post is selected for Bluesky without a page-level target tag."
+        "text_content": "Project Launch This post is selected for Bluesky without a page-level target tag.",
+        "bluesky": "Project DG is now publishing this static site to Standard.site."
       },
       "targets": {
-        "bluesky": {
-          "selected": false
+        "standard-site": {
+          "selected": true,
+          "uri": "at://did:plc:m4xyofkti3nhcejhgt3w7c34/site.standard.document/3mutvpbie7n2q",
+          "published_fingerprint": "sha256:718dbed56c83fde7d354386be7217278e89cc4618db7ec52b4a8b33b66e78223"
         }
       }
     }
@@ -112,7 +122,7 @@
   "integrations": {
     "standard-site": {
       "publication": {
-        "uri": "at://did:plc:m4xyofkti3nhcejhgt3w7c34/site.standard.publication/3muei65cjka2r"
+        "uri": "at://did:plc:m4xyofkti3nhcejhgt3w7c34/site.standard.publication/3mutv3jqdbe2i"
       }
     }
   }

@@ -4,16 +4,15 @@ integrations:
     standard_site:
         enabled: true
         identity: did:plc:m4xyofkti3nhcejhgt3w7c34
-        publication: at://did:plc:m4xyofkti3nhcejhgt3w7c34/site.standard.publication/3muei65cjka2r
+        publication: at://did:plc:m4xyofkti3nhcejhgt3w7c34/site.standard.publication/3mutv3jqdbe2i
         public_dir: .
         paths:
             - path: blog
               publish: all
+            - path: notes
+              publish: all
+            - path: posts
+              publish: explicit
     bluesky:
         enabled: true
         identity: did:plc:m4xyofkti3nhcejhgt3w7c34
-        paths:
-            - path: notes
-              publish: explicit
-            - path: posts
-              publish: all
