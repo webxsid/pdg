@@ -14,7 +14,7 @@ const (
 const (
 	standardSitePublicationScope = "repo:site.standard.publication?action=create&action=update&action=delete"
 	standardSiteDocumentsScope   = "repo:site.standard.document?action=create&action=update"
-	blueskyPostingScope          = "repo:app.bsky.feed.post?action=create&action=delete"
+	blueskyPostingScope          = "repo:app.bsky.feed.post?action=create"
 )
 
 // ScopesForCapabilities returns the canonical OAuth scope set for capabilities.

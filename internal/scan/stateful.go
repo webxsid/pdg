@@ -55,10 +55,10 @@ func (s *Scanner) ScanStateful(ctx context.Context, filesystem fs.FS, options St
 		seen[websitePath] = true
 		if !potential {
 			if prior != nil {
-				copy := *prior
+				copy := sanitizedDocument(prior)
 				copy.Status = state.StatusOutOfScope
-				current.Documents[websitePath] = &copy
-				result.Documents = append(result.Documents, &copy)
+				current.Documents[websitePath] = copy
+				result.Documents = append(result.Documents, copy)
 			}
 			return nil
 		}
@@ -78,7 +78,7 @@ func (s *Scanner) ScanStateful(ctx context.Context, filesystem fs.FS, options St
 			result.Errors = append(result.Errors, fmt.Errorf("%s: %w", websitePath, err))
 			return nil
 		}
-		metadata := state.DocumentMetadata{Title: doc.Title, Description: doc.Description, TextContent: doc.TextContent, Tags: doc.Tags}
+		metadata := state.DocumentMetadata{Title: doc.Title, Description: doc.Description, TextContent: doc.TextContent, Tags: doc.Tags, Bluesky: doc.Bluesky}
 		canonical := doc.CanonicalURL
 		if canonical == "" {
 			base, parseErr := url.Parse(options.Config.Site.URL)
@@ -108,7 +108,9 @@ func (s *Scanner) ScanStateful(ctx context.Context, filesystem fs.FS, options St
 		targetMap := map[state.PublicationTarget]state.TargetState{}
 		if prior != nil {
 			for target, value := range prior.Targets {
-				targetMap[target] = value
+				if target == state.TargetStandardSite {
+					targetMap[target] = value
+				}
 			}
 		}
 		for _, target := range potentialTargets(websitePath, options.Config) {
@@ -130,7 +132,7 @@ func (s *Scanner) ScanStateful(ctx context.Context, filesystem fs.FS, options St
 		if potential && len(targets) == 0 {
 			status = state.StatusUnpublished
 		}
-		documentState := &state.DocumentState{Path: websitePath, Source: filePath, CanonicalURL: canonical, Status: status, Fingerprint: fingerprint, Metadata: metadata, Targets: targetMap}
+		documentState := &state.DocumentState{Path: websitePath, Source: filePath, CanonicalURL: canonical, Status: status, Fingerprint: fingerprint, Metadata: metadata, Targets: targetMap, Posts: priorPosts(prior)}
 		current.Documents[websitePath] = documentState
 		result.Documents = append(result.Documents, documentState)
 		return nil
@@ -143,18 +145,36 @@ func (s *Scanner) ScanStateful(ctx context.Context, filesystem fs.FS, options St
 			continue
 		}
 		if prior.Status == state.StatusOutOfScope {
-			current.Documents[path] = prior
+			current.Documents[path] = sanitizedDocument(prior)
 			continue
 		}
-		copy := *prior
+		copy := sanitizedDocument(prior)
 		copy.Status = state.StatusMissing
-		current.Documents[path] = &copy
+		current.Documents[path] = copy
 	}
 	sort.Slice(result.Documents, func(i, j int) bool { return result.Documents[i].Path < result.Documents[j].Path })
 	if len(result.Errors) > 0 {
 		return result, fmt.Errorf("scan found %d error(s)", len(result.Errors))
 	}
 	return result, nil
+}
+
+func sanitizedDocument(document *state.DocumentState) *state.DocumentState {
+	if document == nil {
+		return nil
+	}
+	copy := *document
+	copy.Targets = map[state.PublicationTarget]state.TargetState{}
+	if target, ok := document.Targets[state.TargetStandardSite]; ok {
+		copy.Targets[state.TargetStandardSite] = target
+	}
+	if document.Posts != nil {
+		copy.Posts = make(map[string]state.PostState, len(document.Posts))
+		for key, value := range document.Posts {
+			copy.Posts[key] = value
+		}
+	}
+	return &copy
 }
 
 func websitePath(filePath string) (string, error) {
@@ -173,44 +193,6 @@ func websitePath(filePath string) (string, error) {
 	return state.NormalizePath(clean), nil
 }
 
-func selectScope(filePath string, scopes []config.ScanScope) (config.ScanScope, bool, error) {
-	clean := path.Clean(strings.TrimPrefix(filePath, "./"))
-	var selected config.ScanScope
-	best := -1
-	for _, scope := range scopes {
-		prefix := path.Clean(strings.Trim(scope.Path, "/"))
-		if prefix == "." {
-			prefix = ""
-		}
-		if prefix != "" && clean != prefix && !strings.HasPrefix(clean, prefix+"/") {
-			continue
-		}
-		if len(prefix) > best {
-			selected, best = scope, len(prefix)
-		}
-	}
-	if best < 0 {
-		if len(scopes) == 0 {
-			return config.ScanScope{Mode: "all"}, true, nil
-		}
-		return config.ScanScope{}, false, nil
-	}
-	if selected.Mode == "" {
-		selected.Mode = "all"
-	}
-	if selected.Mode != "all" && selected.Mode != "explicit" {
-		return config.ScanScope{}, false, fmt.Errorf("invalid scan scope mode %q", selected.Mode)
-	}
-	return selected, true, nil
-}
-
-func scopeTargets(scope config.ScanScope) []state.PublicationTarget {
-	result := []state.PublicationTarget{}
-	for _, target := range scope.Targets {
-		result = append(result, state.PublicationTarget(target))
-	}
-	return result
-}
 func containsTarget(targets []state.PublicationTarget, target state.PublicationTarget) bool {
 	for _, value := range targets {
 		if value == target {
@@ -224,10 +206,6 @@ func validateEnabledTargets(targets []state.PublicationTarget, cfg config.Config
 		switch target {
 		case state.TargetStandardSite:
 			if !cfg.Integrations.StandardSite.Enabled {
-				return fmt.Errorf("target %q is not enabled", target)
-			}
-		case state.TargetBluesky:
-			if !cfg.Integrations.Bluesky.Enabled {
 				return fmt.Errorf("target %q is not enabled", target)
 			}
 		default:
@@ -257,9 +235,6 @@ func potentialTargets(websitePath string, cfg config.Config) []state.Publication
 	if matchesPublicationPath(websitePath, cfg.Integrations.StandardSite.Paths) && cfg.Integrations.StandardSite.Enabled {
 		result = append(result, state.TargetStandardSite)
 	}
-	if matchesPublicationPath(websitePath, cfg.Integrations.Bluesky.Paths) && cfg.Integrations.Bluesky.Enabled {
-		result = append(result, state.TargetBluesky)
-	}
 	return result
 }
 
@@ -268,15 +243,11 @@ func matchesPublicationPath(document string, paths []config.PublicationPath) boo
 }
 
 func hasPotentialTarget(document string, cfg config.Config) bool {
-	return (cfg.Integrations.StandardSite.Enabled && matchesPublicationPath(document, cfg.Integrations.StandardSite.Paths)) ||
-		(cfg.Integrations.Bluesky.Enabled && matchesPublicationPath(document, cfg.Integrations.Bluesky.Paths))
+	return cfg.Integrations.StandardSite.Enabled && matchesPublicationPath(document, cfg.Integrations.StandardSite.Paths)
 }
 
 func matchingPublicationMode(document string, target state.PublicationTarget, cfg config.Config) config.PublicationMode {
 	paths := cfg.Integrations.StandardSite.Paths
-	if target == state.TargetBluesky {
-		paths = cfg.Integrations.Bluesky.Paths
-	}
 	bestPath, bestMode := "", config.PublicationMode("")
 	for _, item := range paths {
 		value := state.NormalizePath(item.Path)
@@ -287,6 +258,17 @@ func matchingPublicationMode(document string, target state.PublicationTarget, cf
 		}
 	}
 	return bestMode
+}
+
+func priorPosts(document *state.DocumentState) map[string]state.PostState {
+	if document == nil || len(document.Posts) == 0 {
+		return nil
+	}
+	posts := make(map[string]state.PostState, len(document.Posts))
+	for name, post := range document.Posts {
+		posts[name] = post
+	}
+	return posts
 }
 
 func matchingPath(document string, paths []config.PublicationPath) string {

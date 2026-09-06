@@ -19,6 +19,12 @@
           "uri": "at://did:plc:m4xyofkti3nhcejhgt3w7c34/site.standard.document/3mutvfvkq2f2s",
           "published_fingerprint": "sha256:cb624a1e3994ad78e10a328c39894c7a68b9ba16997d8b275c54c7854993f85d"
         }
+      },
+      "posts": {
+        "bluesky": {
+          "uri": "at://did:plc:m4xyofkti3nhcejhgt3w7c34/app.bsky.feed.post/3mutvyq67dh2w",
+          "cid": "bafyreibyfhkihacy7io6vnvgurok3rmhh5lhhprywchlebhv4im7lbhqae"
+        }
       }
     },
     "/blog/none": {
@@ -115,6 +121,12 @@
           "selected": true,
           "uri": "at://did:plc:m4xyofkti3nhcejhgt3w7c34/site.standard.document/3mutvpbie7n2q",
           "published_fingerprint": "sha256:718dbed56c83fde7d354386be7217278e89cc4618db7ec52b4a8b33b66e78223"
+        }
+      },
+      "posts": {
+        "bluesky": {
+          "uri": "at://did:plc:m4xyofkti3nhcejhgt3w7c34/app.bsky.feed.post/3mutvvokbuy23",
+          "cid": "bafyreibpa43xepdw4fdavcv6psmpj3jbj57gbxhbw5ytofwy5cmeapqx7q"
         }
       }
     }

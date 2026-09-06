@@ -18,4 +18,5 @@ type Document struct {
 	Targets         []state.PublicationTarget `json:"targets"`
 	TargetsExplicit bool                      `json:"targets_explicit"`
 	TargetsNone     bool                      `json:"targets_none"`
+	Bluesky         string                    `json:"bluesky,omitempty"`
 }

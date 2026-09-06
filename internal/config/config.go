@@ -10,7 +10,6 @@ type Config struct {
 	ATProto      ATProtoConfig     `yaml:"atproto,omitempty"`
 	Integrations IntegrationConfig `yaml:"integrations,omitempty"`
 	Fediverse    FediverseConfig   `yaml:"fediverse,omitempty"`
-	Scan         ScanConfig        `yaml:"scan,omitempty"`
 }
 
 type IntegrationConfig struct {
@@ -27,40 +26,13 @@ type StandardSiteIntegration struct {
 }
 
 type BlueskyIntegration struct {
-	Enabled  bool              `yaml:"enabled"`
-	Identity string            `yaml:"identity"`
-	Paths    []PublicationPath `yaml:"paths"`
+	Enabled  bool   `yaml:"enabled"`
+	Identity string `yaml:"identity"`
 }
 
 // SiteConfig represents the configuration for the site.
 type SiteConfig struct {
 	URL string `yaml:"url"`
-}
-
-type ScanConfig struct {
-	Dist     string        `yaml:"dist"`
-	Scopes   []ScanScope   `yaml:"scope"`
-	Metadata MetadataRules `yaml:"metadata"`
-}
-
-type ScanScope struct {
-	Path    string   `yaml:"path"`
-	Mode    string   `yaml:"mode"`
-	Targets []string `yaml:"targets"`
-}
-
-type MetadataRules struct {
-	Title       ExtractionRule `yaml:"title"`
-	Description ExtractionRule `yaml:"description"`
-	PublishedAt ExtractionRule `yaml:"published_at"`
-	UpdatedAt   ExtractionRule `yaml:"updated_at"`
-	Tags        ExtractionRule `yaml:"tags"`
-}
-
-type ExtractionRule struct {
-	Selector  string `yaml:"selector"`
-	Source    string `yaml:"source"`
-	Attribute string `yaml:"attribute"`
 }
 
 // ATProtoConfig represents the configuration for the AT Protocol integration.

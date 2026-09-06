@@ -39,10 +39,7 @@ func runInject(name string) error {
 	if err != nil {
 		return fmt.Errorf("load project state: %w", err)
 	}
-	root := cfg.Scan.Dist
-	if root == "" {
-		root = cfg.Integrations.StandardSite.PublicDir
-	}
+	root := cfg.Integrations.StandardSite.PublicDir
 	if root == "" {
 		root = "."
 	}

@@ -86,7 +86,7 @@ func TestParseHTMLTargetsNone(t *testing.T) {
 }
 
 func TestParseHTMLRejectsInvalidTargets(t *testing.T) {
-	for _, value := range []string{"", "none,bluesky", "unknown"} {
+	for _, value := range []string{"", "bluesky", "none,bluesky", "unknown"} {
 		t.Run(value, func(t *testing.T) {
 			input := `<html><head><title>Invalid</title><meta name="pdg:targets" content="` + value + `"></head><body><article>Content</article></body></html>`
 			if _, err := ParseHTML(strings.NewReader(input)); err == nil {

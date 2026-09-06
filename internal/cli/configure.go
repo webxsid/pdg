@@ -38,11 +38,8 @@ func runConfigure(args []string) error {
 		}
 		updated.Integrations.StandardSite.Paths = paths
 	case integration.Bluesky:
-		paths, err := configurePublicationPaths("Bluesky", updated.Integrations.Bluesky.Paths)
-		if err != nil {
-			return err
-		}
-		updated.Integrations.Bluesky.Paths = paths
+		fmt.Println("Bluesky has no project publication paths; posting is explicit via `pdg post`.")
+		return nil
 	}
 	if reflect.DeepEqual(*cfg, updated) {
 		fmt.Println("No configuration changes made.")

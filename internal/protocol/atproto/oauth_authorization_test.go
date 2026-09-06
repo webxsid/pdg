@@ -126,6 +126,15 @@ func TestBuildAuthorizationURL(t *testing.T) {
 	if query.Get("client_id") == "" {
 		t.Error("client_id is missing")
 	}
+	if query.Get("client_id") != "http://localhost?redirect_uri=http%3A%2F%2F127.0.0.1%3A49152%2Fcallback&scope=atproto" {
+		t.Errorf("client_id = %q, want encoded localhost client metadata", query.Get("client_id"))
+	}
+	if strings.Contains(parsed.RawQuery, "client_id=http://localhost?") {
+		t.Error("client_id was not URL-encoded in the authorization URL")
+	}
+	if !strings.Contains(parsed.RawQuery, "client_id=http%3A%2F%2Flocalhost%3F") {
+		t.Errorf("authorization URL raw query does not encode client_id: %q", parsed.RawQuery)
+	}
 }
 
 func TestAuthorize(t *testing.T) {

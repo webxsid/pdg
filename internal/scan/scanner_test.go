@@ -2,6 +2,7 @@ package scan
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"testing/fstest"
 
@@ -108,5 +109,34 @@ func TestScanStatefulTargetsNoneOverridesAll(t *testing.T) {
 	}
 	if document.Targets[state.TargetStandardSite].Selected {
 		t.Fatal("standard-site selected despite targets=none")
+	}
+}
+
+func TestScanStatefulRemovesLegacyBlueskyTargets(t *testing.T) {
+	filesystem := fstest.MapFS{"blog/page/index.html": {Data: []byte(`<html><head><title>Page</title></head><body><article>Content</article></body></html>`)}}
+	cfg := config.Config{
+		Site: config.SiteConfig{URL: "https://example.com"},
+		Integrations: config.IntegrationConfig{StandardSite: config.StandardSiteIntegration{
+			Enabled: true,
+			Paths:   []config.PublicationPath{{Path: "blog/", Publish: config.PublicationAll}},
+		}},
+	}
+	var previous state.ProjectState
+	if err := json.Unmarshal([]byte(`{"version":1,"documents":{"/blog/page":{"path":"/blog/page","targets":{"bluesky":{"selected":true}}}}}`), &previous); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+	result, err := NewScanner().ScanStateful(context.Background(), filesystem, StatefulOptions{Config: cfg, Previous: previous})
+	if err != nil {
+		t.Fatalf("ScanStateful() error = %v", err)
+	}
+	document := result.State.Documents["/blog/page"]
+	if document == nil {
+		t.Fatal("document was not persisted")
+	}
+	if _, ok := document.Targets[state.PublicationTarget("bluesky")]; ok {
+		t.Fatal("legacy bluesky target was retained")
+	}
+	if _, ok := document.Targets[state.TargetStandardSite]; !ok {
+		t.Fatal("standard-site target was not created")
 	}
 }

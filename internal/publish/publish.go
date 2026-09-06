@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/webxsid/pdg/internal/protocol/atproto"
 	"github.com/webxsid/pdg/internal/state"
@@ -69,6 +70,10 @@ func StandardSite(ctx context.Context, project *state.ProjectState, session atpr
 				summary.Results = append(summary.Results, Result{Path: path, Action: ActionNoop})
 				continue
 			}
+			if err := validateDocument(document); err != nil {
+				summary.Errors = append(summary.Errors, fmt.Errorf("%s: %w", path, err))
+				continue
+			}
 			_, rkey, _ := splitRecordURI(target.URI)
 			cid, err := client.UpdateRecord(ctx, session, standardSiteDocumentCollection, rkey, documentRecord(document, publication.Publication.URI))
 			if err != nil {
@@ -83,6 +88,10 @@ func StandardSite(ctx context.Context, project *state.ProjectState, session atpr
 				return summary
 			}
 			summary.Results = append(summary.Results, Result{Path: path, Action: ActionUpdate})
+			continue
+		}
+		if err := validateDocument(document); err != nil {
+			summary.Errors = append(summary.Errors, fmt.Errorf("%s: %w", path, err))
 			continue
 		}
 		uri, err := client.CreateRecord(ctx, session, standardSiteDocumentCollection, documentRecord(document, publication.Publication.URI))
@@ -109,7 +118,7 @@ func StandardSite(ctx context.Context, project *state.ProjectState, session atpr
 func documentRecord(document *state.DocumentState, publication string) map[string]any {
 	record := map[string]any{
 		"$type": "site.standard.document", "site": publication, "path": document.Path,
-		"title": document.Metadata.Title, "publishedAt": document.Metadata.PublishedAt,
+		"title": document.Metadata.Title, "publishedAt": document.Metadata.PublishedAt.Format(time.RFC3339),
 	}
 	if document.Metadata.Description != "" {
 		record["description"] = document.Metadata.Description
@@ -121,9 +130,16 @@ func documentRecord(document *state.DocumentState, publication string) map[strin
 		record["tags"] = document.Metadata.Tags
 	}
 	if document.Metadata.UpdatedAt != nil {
-		record["updatedAt"] = document.Metadata.UpdatedAt
+		record["updatedAt"] = document.Metadata.UpdatedAt.Format(time.RFC3339)
 	}
 	return record
+}
+
+func validateDocument(document *state.DocumentState) error {
+	if document.Metadata.PublishedAt == nil {
+		return errors.New("cannot publish to Standard.site: missing published_at")
+	}
+	return nil
 }
 
 func validateRecordURI(raw, expectedDID, collection string) error {

@@ -53,6 +53,16 @@ func (c *XRPCClient) DoWithSession(ctx context.Context, session Session, method,
 
 // CreateRecord creates an ATProto record using the server-generated rkey.
 func (c *XRPCClient) CreateRecord(ctx context.Context, session Session, collection string, record any) (string, error) {
+	result, err := c.CreateRecordResult(ctx, session, collection, record)
+	return result.URI, err
+}
+
+type RecordResult struct {
+	URI string `json:"uri"`
+	CID string `json:"cid"`
+}
+
+func (c *XRPCClient) CreateRecordResult(ctx context.Context, session Session, collection string, record any) (RecordResult, error) {
 	var result struct {
 		URI string `json:"uri"`
 		CID string `json:"cid"`
@@ -60,12 +70,12 @@ func (c *XRPCClient) CreateRecord(ctx context.Context, session Session, collecti
 	if err := c.DoWithSession(ctx, session, http.MethodPost, "com.atproto.repo.createRecord", map[string]any{
 		"repo": session.Identity.DID, "collection": collection, "record": record,
 	}, &result); err != nil {
-		return "", err
+		return RecordResult{}, err
 	}
 	if result.URI == "" {
-		return "", fmt.Errorf("createRecord response missing uri")
+		return RecordResult{}, fmt.Errorf("createRecord response missing uri")
 	}
-	return result.URI, nil
+	return RecordResult{URI: result.URI, CID: result.CID}, nil
 }
 
 // UpdateRecord updates an existing record and returns its new CID.

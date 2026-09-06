@@ -19,11 +19,10 @@ var scnCmd = &cobra.Command{
 	Short: "Scan an existing website directory for publishable content",
 	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		var dir string
+		dir := ""
 		if len(args) == 1 {
 			dir = args[0]
 		}
-
 		return runScan(cmd.Context(), dir)
 	},
 }
@@ -34,13 +33,10 @@ func runScan(ctx context.Context, dir string) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 	if dir == "" {
-		dir = cfg.Scan.Dist
-	}
-	if dir == "" {
 		dir = cfg.Integrations.StandardSite.PublicDir
 	}
 	if dir == "" {
-		dir = "."
+		return fmt.Errorf("scan directory is not configured; pass a directory or set integrations.standard_site.public_dir")
 	}
 	info, err := os.Stat(dir)
 	if err != nil {

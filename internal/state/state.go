@@ -15,7 +15,6 @@ type PublicationTarget string
 
 const (
 	TargetStandardSite PublicationTarget = "standard-site"
-	TargetBluesky      PublicationTarget = "bluesky"
 )
 
 type DocumentStatus string
@@ -36,6 +35,7 @@ type DocumentMetadata struct {
 	UpdatedAt   *time.Time `json:"updated_at,omitempty"`
 	Tags        []string   `json:"tags,omitempty"`
 	TextContent string     `json:"text_content,omitempty"`
+	Bluesky     string     `json:"bluesky,omitempty"`
 }
 
 type TargetState struct {
@@ -59,6 +59,12 @@ type DocumentState struct {
 	Metadata      DocumentMetadata                  `json:"metadata"`
 	Targets       map[PublicationTarget]TargetState `json:"targets"`
 	TargetChanges []TargetChange                    `json:"target_changes,omitempty"`
+	Posts         map[string]PostState              `json:"posts,omitempty"`
+}
+
+type PostState struct {
+	URI string `json:"uri"`
+	CID string `json:"cid,omitempty"`
 }
 
 type ProjectState struct {

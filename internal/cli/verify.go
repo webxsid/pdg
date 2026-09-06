@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"net/http"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
@@ -29,7 +30,30 @@ func loadProject() (reconcile.Project, error) {
 
 func runVerify(cmd *cobra.Command, args []string) error {
 	if verifyLive {
-		return fmt.Errorf("live verification is not implemented yet")
+		fmt.Println("Loading project configuration and state...")
+		project, err := loadProject()
+		if err != nil {
+			return err
+		}
+		name, err := selectVerificationIntegration(args, project.Config)
+		if err != nil {
+			return err
+		}
+		if name != integration.StandardSite {
+			return fmt.Errorf("live verification for %s is not implemented yet", name)
+		}
+		fmt.Println("Verifying deployed Standard.site...")
+		findings := reconcile.VerifyStandardSiteLiveWithProgress(cmd.Context(), project, &http.Client{}, func(resource, rawURL string) {
+			fmt.Printf("  Checking %s (%s)\n", resource, rawURL)
+		})
+		printFindings(findings)
+		for _, finding := range findings {
+			if finding.Status != reconcile.OK {
+				return fmt.Errorf("live verification failed")
+			}
+		}
+		fmt.Println("Live Standard.site verification passed.")
+		return nil
 	}
 	project, err := loadProject()
 	if err != nil {

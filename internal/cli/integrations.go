@@ -74,6 +74,9 @@ func runAdd(ctx context.Context, args []string) error {
 	for did, capabilities := range groups {
 		scope := strings.Join(atproto.ScopesForCapabilities(capabilities...), " ")
 		session, loadErr := store.LoadSession(ctx, did)
+		if loadErr == nil {
+			scope = mergeScopes(session.Scope, scope)
+		}
 		if loadErr != nil || !hasScopes(session.Scope, scope) {
 			fmt.Printf("Authorizing %s...\n", did)
 			account := findAccount(accounts, did)
@@ -127,12 +130,6 @@ func runAdd(ctx context.Context, args []string) error {
 			projectState.Integrations["standard-site"] = state.IntegrationState{Publication: &state.PublicationState{URI: uri}}
 		} else {
 			bluesky := cfg.Integrations.Bluesky
-			if len(bluesky.Paths) == 0 {
-				bluesky.Paths, err = promptPublicationPaths("Bluesky")
-				if err != nil {
-					return err
-				}
-			}
 			bluesky.Enabled, bluesky.Identity = true, did
 			cfg.Integrations.Bluesky = bluesky
 		}
@@ -323,6 +320,20 @@ func hasScopes(granted, required string) bool {
 	}
 	return true
 }
+
+func mergeScopes(existing, requested string) string {
+	seen := map[string]bool{}
+	values := make([]string, 0)
+	for _, scope := range strings.Fields(existing + " " + requested) {
+		if seen[scope] {
+			continue
+		}
+		seen[scope] = true
+		values = append(values, scope)
+	}
+	return strings.Join(values, " ")
+}
+
 func findAccount(accounts []sessionstore.AccountSummary, did string) *sessionstore.AccountSummary {
 	for i := range accounts {
 		if accounts[i].DID == did {

@@ -57,6 +57,14 @@ func ParseHTML(r io.Reader) (Document, error) {
 				if content != "" {
 					doc.Tags = append(doc.Tags, content)
 				}
+			case "pdg:bluesky":
+				if content != "" {
+					if doc.Bluesky != "" && doc.Bluesky != content {
+						targetErr = errors.New("conflicting pdg:bluesky metadata")
+					} else {
+						doc.Bluesky = content
+					}
+				}
 			case "pdg:targets":
 				doc.TargetsExplicit = true
 				if content != "" {
@@ -128,8 +136,6 @@ func parseTargets(content string) ([]state.PublicationTarget, error) {
 		switch value {
 		case string(state.TargetStandardSite):
 			target = state.TargetStandardSite
-		case string(state.TargetBluesky):
-			target = state.TargetBluesky
 		default:
 			return nil, fmt.Errorf("unknown target %q", value)
 		}

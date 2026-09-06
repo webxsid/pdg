@@ -23,9 +23,5 @@ func LoadConfig(path string) (*Config, error) {
 	if config.Integrations.StandardSite.Paths, err = NormalizePublicationPaths(config.Integrations.StandardSite.Paths); err != nil {
 		return nil, fmt.Errorf("validate Standard.site paths: %w", err)
 	}
-	if config.Integrations.Bluesky.Paths, err = NormalizePublicationPaths(config.Integrations.Bluesky.Paths); err != nil {
-		return nil, fmt.Errorf("validate Bluesky paths: %w", err)
-	}
-
 	return &config, nil
 }
